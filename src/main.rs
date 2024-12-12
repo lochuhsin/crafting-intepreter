@@ -1,9 +1,9 @@
 use clap::Parser;
 use core::panic;
+use interpreters::scanner::Scanner;
 use std::fs::File;
 use std::io::{stdout, Read, Write};
 use std::path::PathBuf;
-use std::str::FromStr;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -23,10 +23,12 @@ fn trim_end(s: &mut String) {
     }
 }
 
-fn run(s: String) -> String {
+fn run(s: String) -> Option<String> {
     // let Ok(new_s) = String::from_str("asfdasdfasdf");
     // new_s
-    String::new()
+    let mut scanner = Scanner::new(s);
+    scanner.scan_tokens();
+    None
 }
 
 fn run_prompt() {
@@ -43,13 +45,10 @@ fn run_prompt() {
             Err(_) => println!("Something went wrong while reading from prompt"),
         };
         trim_end(&mut s);
-        let Ok(exit) = String::from_str("exit");
-        if s == exit {
+        if s == *"exit" {
             break;
         }
-        let output: String = run(s.clone());
-
-        if !output.is_empty() {
+        if let Some(output) = run(s.clone()) {
             println!("{}", output)
         } else {
             println!("{}", s)
