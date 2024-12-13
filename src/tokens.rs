@@ -1,5 +1,5 @@
-use std::{fmt::Display, str::FromStr};
-#[derive(Debug, PartialEq)]
+use std::fmt::Display;
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TokenType {
     // Single character Tokens
     LeftParen,
@@ -54,6 +54,50 @@ impl TokenType {
     pub fn as_string(&self) -> &'static str {
         match self {
             TokenType::LeftParen => "(",
+            TokenType::RightParen => ")",
+            TokenType::LeftBrace => "{",
+            TokenType::RightBrace => "}",
+            TokenType::Comma => ",",
+            TokenType::Dot => ".",
+            TokenType::Minus => "-",
+            TokenType::Plus => "+",
+            TokenType::Semicolon => ";",
+            TokenType::Slash => "/",
+            TokenType::Star => "*",
+
+            // One or two character tokens
+            TokenType::Bang => "!",
+            TokenType::BangEqual => "!=",
+            TokenType::Equal => "=",
+            TokenType::EqualEqual => "==",
+            TokenType::Greater => ">",
+            TokenType::GreaterEqual => ">=",
+            TokenType::Less => "<",
+            TokenType::LessEqual => "<=",
+
+            // Literals
+            TokenType::Identifier => "<Identifier>",
+            TokenType::String => "<String>",
+            TokenType::Number => "<Number>",
+
+            // Keywords
+            TokenType::And => "and",
+            TokenType::Class => "class",
+            TokenType::Else => "else",
+            TokenType::False => "false",
+            TokenType::Fun => "fun",
+            TokenType::For => "for",
+            TokenType::If => "if",
+            TokenType::Nil => "nil",
+            TokenType::Or => "or",
+            TokenType::Print => "print",
+            TokenType::Return => "return",
+            TokenType::Super => "super",
+            TokenType::This => "this",
+            TokenType::True => "true",
+            TokenType::Var => "var",
+            TokenType::While => "while",
+            TokenType::EOF => "EOF",
             _ => unimplemented!("Token type to string is not implemented"),
         }
     }
@@ -97,6 +141,10 @@ impl Token {
             literal,
             line,
         }
+    }
+
+    pub fn get_token_type(&self) -> TokenType {
+        self.token_type
     }
 }
 

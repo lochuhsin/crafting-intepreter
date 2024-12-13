@@ -160,7 +160,8 @@ impl Scanner {
         }
 
         // fractional, as we don't allow "1234." to be a valid number
-        if self.peek() == '.' && self.peek_next().is_ascii() {
+        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
+            self.advance();
             while self.peek().is_ascii_digit() {
                 self.advance();
             }
@@ -235,5 +236,12 @@ impl Scanner {
 
     pub fn get_tokens(&self) -> &Vec<Token> {
         &self.tokens
+    }
+    pub fn get_token_types(&self) -> Vec<TokenType> {
+        let mut v: Vec<TokenType> = Vec::new();
+        for t in &self.tokens {
+            v.push(t.get_token_type());
+        }
+        v
     }
 }
