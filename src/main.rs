@@ -48,8 +48,9 @@ fn run_prompt() {
         if s == *"exit" {
             break;
         }
-        if let Some(output) = run(s.clone()) {
-            println!("{}", output)
+        let output = run(s.clone());
+        if let Some(result) = output {
+            println!("{}", result)
         } else {
             println!("{}", s)
         }
