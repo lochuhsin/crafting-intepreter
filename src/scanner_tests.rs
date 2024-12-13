@@ -7,7 +7,15 @@ mod test {
         let mut scanner = Scanner::new("\"abcde\"".to_string());
         scanner.scan_tokens();
         let tokens = scanner.get_token_types();
-        assert_eq!(tokens, vec![TokenType::String, TokenType::EOF])
+        assert_eq!(tokens, vec![TokenType::String, TokenType::EOF]);
+    }
+    #[test]
+    fn scan_string_error() {
+        let mut scanner = Scanner::new("\"abcde".to_string());
+        scanner.scan_tokens();
+        let tokens = scanner.get_token_types();
+        assert_eq!(tokens, vec![TokenType::EOF]);
+        assert!(scanner.has_error());
     }
     #[test]
     fn scan_number() {
@@ -210,6 +218,34 @@ mod test {
         assert_eq!(
             scanner.get_token_types(),
             vec![TokenType::Star, TokenType::EOF]
+        );
+    }
+    #[test]
+    fn block_comment() {
+        let mut scanner = Scanner::new("/**/".to_string());
+        scanner.scan_tokens();
+        assert_eq!(scanner.get_token_types(), vec![TokenType::EOF]);
+
+        let mut scanner = Scanner::new("/*abcde*/".to_string());
+        scanner.scan_tokens();
+        assert_eq!(scanner.get_token_types(), vec![TokenType::EOF]);
+
+        let mut scanner = Scanner::new("/*abcde*/ 123.4".to_string());
+        scanner.scan_tokens();
+        assert_eq!(
+            scanner.get_token_types(),
+            vec![TokenType::Number, TokenType::EOF]
+        );
+
+        let mut scanner = Scanner::new(">= /*abcde 123. <= */ <=".to_string());
+        scanner.scan_tokens();
+        assert_eq!(
+            scanner.get_token_types(),
+            vec![
+                TokenType::GreaterEqual,
+                TokenType::LessEqual,
+                TokenType::EOF
+            ]
         );
     }
 }

@@ -90,16 +90,36 @@ impl Scanner {
                     while self.peek() != '\0' && !self.is_at_end() {
                         self.advance();
                     }
-                    None
+                    Some(TokenType::ParserIgnore)
+                } else if self.match_sub_ch('*') {
+                    let mut closed = false;
+                    while !self.is_at_end() {
+                        let ch = self.advance();
+                        // Note: We need to consume the '/' if we match
+                        // not using peek. Otherwise we will get an extra slash token
+                        if ch == '*' && self.match_sub_ch('/') {
+                            closed = true;
+                            break;
+                        }
+
+                        if ch == '\n' {
+                            self.line += 1;
+                        }
+                    }
+                    if !closed {
+                        self.has_error = true;
+                        error(self.line, "unclosed block comment".to_string());
+                    }
+                    Some(TokenType::ParserIgnore)
                 } else {
                     Some(TokenType::Slash)
                 }
             }
             // Whitespace
-            ' ' | '\r' | '\t' => None,
+            ' ' | '\r' | '\t' => Some(TokenType::ParserIgnore),
             '\n' => {
                 self.line += 1;
-                None
+                Some(TokenType::ParserIgnore)
             }
             // String Literals
             '"' => {
@@ -110,11 +130,13 @@ impl Scanner {
                     self.advance();
                 }
                 if self.is_at_end() {
+                    self.has_error = true;
                     error(self.line, String::from("Unterminated string literal"));
-                };
-
-                self.advance(); // closing string
-                Some(TokenType::String)
+                    Some(TokenType::ParserIgnore)
+                } else {
+                    self.advance(); // closing string
+                    Some(TokenType::String)
+                }
             }
             _ => {
                 // put somewhere else
@@ -134,12 +156,22 @@ impl Scanner {
                 self.add_token_with_bound(t, self.start + 1, self.current - 1);
             } else if t == TokenType::Number {
                 self.add_token_with_bound(t, self.start, self.current);
+            } else if t == TokenType::ParserIgnore {
+                //pass
             } else {
                 self.add_token(t);
             }
         } else {
             self.has_error = true;
-            error(self.line, String::from("Unexpected character"));
+            error(
+                self.line,
+                format!(
+                    "Unexpected character: {}, at {} to {}",
+                    &self.source[self.start..self.current],
+                    self.start,
+                    self.current
+                ),
+            );
         }
     }
 

@@ -48,6 +48,9 @@ pub enum TokenType {
     While,
 
     EOF,
+
+    // Use for parsing, just ignore this token ...etc
+    ParserIgnore,
 }
 
 impl TokenType {
@@ -98,7 +101,7 @@ impl TokenType {
             TokenType::Var => "var",
             TokenType::While => "while",
             TokenType::EOF => "EOF",
-            _ => unimplemented!("Token type to string is not implemented"),
+            TokenType::ParserIgnore => "ParserIgnore",
         }
     }
 
@@ -152,10 +155,11 @@ impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {} {}",
+            "{} {} {} {}",
             self.token_type.as_string(),
             self.lexeme,
-            self.literal
+            self.literal,
+            self.line
         )
     }
 }
