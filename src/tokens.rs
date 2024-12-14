@@ -105,7 +105,7 @@ impl TokenType {
         }
     }
 
-    pub fn to_keyword(s: &str) -> Option<TokenType> {
+    pub fn keyword_to_token(s: &str) -> Option<TokenType> {
         match s {
             "and" => Some(TokenType::And),
             "class" => Some(TokenType::Class),
@@ -148,6 +148,14 @@ impl Token {
 
     pub fn get_token_type(&self) -> TokenType {
         self.token_type
+    }
+
+    pub fn get_literal(&self) -> String {
+        self.literal.clone()
+    }
+
+    pub fn get_lexeme(&self) -> String {
+        self.lexeme.clone()
     }
 }
 

@@ -154,8 +154,6 @@ impl Scanner {
             if t == TokenType::String {
                 // we trim the string concatenation ( " )
                 self.add_token_with_bound(t, self.start + 1, self.current - 1);
-            } else if t == TokenType::Number {
-                self.add_token_with_bound(t, self.start, self.current);
             } else if t == TokenType::ParserIgnore {
                 //pass
             } else {
@@ -179,7 +177,7 @@ impl Scanner {
         while self.peek().is_alphanumeric() || self.peek() == '_' {
             self.advance();
         }
-        if let Some(t) = TokenType::to_keyword(&self.source[self.start..self.current]) {
+        if let Some(t) = TokenType::keyword_to_token(&self.source[self.start..self.current]) {
             t
         } else {
             TokenType::Identifier
