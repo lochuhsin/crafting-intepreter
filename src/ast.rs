@@ -1,14 +1,29 @@
+use std::fmt::Display;
+
 use crate::tokens::Token;
 
 // Just for convenience, since if we pass expression with trait object
 // we loose type information. this is a way that somehow we could get
 // the type info if needed.
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum ExpressionType {
     Literal,
     Grouping,
     Unary,
     Binary,
     UnknownExpression,
+}
+impl Display for ExpressionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match *self {
+            Self::Literal => "Literal",
+            Self::Grouping => "Grouping",
+            Self::Unary => "Unary",
+            Self::Binary => "Binary",
+            Self::UnknownExpression => "Unknown Expression",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 pub trait Expression {
