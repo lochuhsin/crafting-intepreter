@@ -37,7 +37,7 @@ fn run(s: String) -> Option<String> {
     // visitors::interpret_expr_ast(&expr);
 
     let statements = parsers.parse();
-    visitors::interpret_stat_ast(&statements[0..statements.len()]);
+    visitors::interpret_ast(&statements[0..statements.len()]);
     Some("".to_owned())
 }
 

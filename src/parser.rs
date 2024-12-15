@@ -51,12 +51,19 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Box<dyn Statement>> {
         let mut statements = Vec::<Box<dyn Statement>>::new();
         while !self.is_at_end() {
-            statements.push(self.statement())
+            if let Some(stat) = self.get_statement() {
+                statements.push(stat);
+            } else {
+                /*
+                 * Runtime statement error
+                 */
+                break;
+            }
         }
         statements
     }
 
-    fn statement(&mut self) -> Box<dyn Statement> {
+    fn get_statement(&mut self) -> Option<Box<dyn Statement>> {
         if self.match_tokens(&[TokenType::Print]) {
             self.print_statement()
         } else {
@@ -64,16 +71,23 @@ impl Parser {
         }
     }
 
-    fn print_statement(&mut self) -> Box<dyn Statement> {
+    // This is some what similar to default functions
+    fn print_statement(&mut self) -> Option<Box<dyn Statement>> {
         let expr = self.expression();
-        self.consume(&TokenType::Semicolon, "Expect ; after value");
-        Box::new(PrintStat::new(expr))
+        if self.consume(&TokenType::Semicolon, "Expect ; after value") {
+            Some(Box::new(PrintStat::new(expr)))
+        } else {
+            None
+        }
     }
 
-    fn expression_statement(&mut self) -> Box<dyn Statement> {
+    fn expression_statement(&mut self) -> Option<Box<dyn Statement>> {
         let expr = self.expression();
-        self.consume(&TokenType::Semicolon, "Expect ; after value");
-        Box::new(ExpressionStat::new(expr))
+        if self.consume(&TokenType::Semicolon, "Expect ; after value") {
+            Some(Box::new(ExpressionStat::new(expr)))
+        } else {
+            None
+        }
     }
 
     pub fn parse_expr_for_test(&mut self) -> Box<dyn Expression> {
@@ -205,11 +219,15 @@ impl Parser {
         flag
     }
 
-    fn consume(&mut self, token_type: &TokenType, msg: &str) {
+    fn consume(&mut self, token_type: &TokenType, msg: &str) -> bool {
+        // TODO: Figure out a cleaner way to signal runtime error
+        // Which should ... somehow stop evaluating statements
         if self.check(token_type) {
             self.advance();
+            true
         } else {
             parse_error(self.peek(), msg);
+            false
         }
     }
 

@@ -21,7 +21,8 @@ pub fn interpret_expr_ast(expr: &Box<dyn Expression>) -> Option<String> {
     }
 }
 
-pub fn interpret_stat_ast(stats: &[Box<dyn Statement>]) {
+pub fn interpret_ast(stats: &[Box<dyn Statement>]) {
+    // Figure out how to handle runtime errors
     for stat in stats.iter() {
         stat.evaluate()
     }
