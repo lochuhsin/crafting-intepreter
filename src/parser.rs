@@ -4,16 +4,7 @@ use crate::{
     tokens::{Token, TokenType},
 };
 
-/* The basic concept of Context Free Grammar
- * expression -> literal | unary | binary | grouping
- * literal -> Number | String | "true" | "false" | "nil"
- * grouping -> "(" expression ")"
- * unary -> ("-" | "!") expression
- * binary -> expression operator expression
- * operator -> "==" | "!=" ... etc
- *
- * The actual grammar expression that we would use:
- *
+/*
  * Note: We would need to define the Precedence for different operators
  * and the associativity for evaluation (left associative of right associative).
  *
@@ -25,10 +16,7 @@ use crate::{
  * Factor: /, *
  * Unary: !, -
  *
- * // a, b, c, d, e
-// expression (comma expression)*
-// (expression comma) * expression
-
+ *
  * expression       -> comma
  * comma ->         -> equality ( (",") equality ) *
  * equality         -> comparison ( ( "!=" | "==") comparison )*

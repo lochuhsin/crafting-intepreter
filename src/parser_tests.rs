@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod test {
-    use crate::ast_visitors;
     use crate::parser::Parser;
     use crate::{
         ast::ExpressionType,
@@ -60,8 +59,6 @@ mod test {
 
         let mut parser = Parser::new(tokens);
         let expr = parser.parse();
-
-        println!("{}", ast_visitors::format_ast(&expr));
         assert_eq!(expr.expr_type(), ExpressionType::Grouping);
     }
 
@@ -71,8 +68,6 @@ mod test {
 
         let mut parser = Parser::new(tokens);
         let expr = parser.parse();
-
-        println!("{}", ast_visitors::format_ast(&expr));
         assert_eq!(expr.expr_type(), ExpressionType::Literal);
     }
 
@@ -86,8 +81,6 @@ mod test {
 
         let mut parser = Parser::new(tokens);
         let expr = parser.parse();
-
-        println!("{}", ast_visitors::format_ast(&expr));
         assert_eq!(expr.expr_type(), ExpressionType::Unary);
     }
 

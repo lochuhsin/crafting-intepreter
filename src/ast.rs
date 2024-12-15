@@ -26,63 +26,88 @@ impl Display for ExpressionType {
     }
 }
 
-pub trait Expression {
-    fn format_string(&self) -> String;
+pub trait Expression: Display {
     // Just a helper function
     fn expr_type(&self) -> ExpressionType;
 }
 
-impl Expression for Literal {
-    fn format_string(&self) -> String {
-        self.token.get_literal()
-    }
+impl Expression for Literal
+where
+    Self: Display,
+{
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::Literal
     }
 }
 
-impl Expression for Grouping {
-    fn format_string(&self) -> String {
-        format!("( grouping {} )", self.expr.format_string().as_str())
+impl Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.token.get_lexeme())
     }
+}
+
+impl Expression for Grouping
+where
+    Self: Display,
+{
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::Grouping
     }
 }
-
-impl Expression for Unary {
-    fn format_string(&self) -> String {
-        format!(
-            "( {} {} )",
-            self.operator.get_lexeme(),
-            self.right.format_string().as_str()
-        )
+impl Display for Grouping {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "( grouping {} )", self.expr)
     }
+}
+
+impl Expression for Unary
+where
+    Self: Display,
+{
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::Unary
     }
 }
 
-impl Expression for Binary {
-    fn format_string(&self) -> String {
-        format!(
-            "( {} {} {} )",
-            self.operator.get_lexeme(),
-            self.left.format_string().as_str(),
-            self.right.format_string().as_str()
-        )
+impl Display for Unary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "( {} {} )", self.operator.get_lexeme(), self.right)
     }
+}
+
+impl Expression for Binary
+where
+    Self: Display,
+{
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::Binary
     }
 }
 
-impl Expression for UnknownExpression {
-    fn format_string(&self) -> String {
-        "( found unknown expression )".to_string()
+impl Display for Binary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "( {} {} {} )",
+            self.operator.get_lexeme(),
+            self.left,
+            self.right
+        )
     }
+}
+
+impl Expression for UnknownExpression
+where
+    UnknownExpression: Display,
+{
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::UnknownExpression
+    }
+}
+
+impl Display for UnknownExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "( found unknown expression )")
     }
 }
 

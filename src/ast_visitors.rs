@@ -8,5 +8,5 @@ use crate::ast::Expression;
 // NOTE: known clippy suggestion bug
 // https://github.com/rust-lang/rust-clippy/issues/11940
 pub fn format_ast(expr: &Box<dyn Expression>) -> String {
-    expr.format_string()
+    expr.to_string()
 }
