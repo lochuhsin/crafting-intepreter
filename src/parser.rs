@@ -1,6 +1,6 @@
 use crate::{
     ast::{Binary, Expression, Grouping, Literal, Unary, UnknownExpression},
-    errors::{self, error, parse_error},
+    errors::report,
     tokens::{Token, TokenType},
 };
 
@@ -21,7 +21,7 @@ use crate::{
  *
  * expression       -> comma
  * comma            -> ternary ( (",") ternary ) *
- * ternary          -> equality (? equality : equality )*
+ * ternary          -> equality (? equality : equality )*  # Should be right associative
  * equality         -> comparison ( ( "!=" | "==") comparison )*
  * comparison       -> term ( ( ">" | ">=" | "<=" | "<") term )*
  * term             -> factor ( ( "-" | "+" ) factor )*
@@ -75,7 +75,6 @@ impl Parser {
          *
          * ((a ? b : c )? b : c)
          */
-        // equality (? equality : equality )*
         let mut expr = self.equality();
         while self.match_tokens(&[TokenType::QuestionMark]) {
             let question = self.previous();
@@ -183,7 +182,7 @@ impl Parser {
         if self.check(token_type) {
             self.advance();
         } else {
-            errors::parse_error(self.peek(), msg);
+            parse_error(self.peek(), msg);
         }
     }
 
@@ -234,5 +233,17 @@ impl Parser {
                 _ => {}
             }
         }
+    }
+}
+
+pub fn parse_error(token: &Token, msg: &str) {
+    if *token.get_token_type() == TokenType::EOF {
+        report(token.get_line(), "at end".to_string(), msg.to_string());
+    } else {
+        report(
+            token.get_line(),
+            format!("at {}", token.get_lexeme()),
+            msg.to_string(),
+        )
     }
 }

@@ -1,5 +1,7 @@
 use clap::Parser;
 use core::panic;
+use interpreters::ast_visitors;
+use interpreters::parser::Parser as interpret_parser;
 use interpreters::scanner::Scanner;
 use std::fs::File;
 use std::io::{stdout, Read, Write};
@@ -28,7 +30,11 @@ fn run(s: String) -> Option<String> {
     // new_s
     let mut scanner = Scanner::new(s);
     scanner.scan_tokens();
-    None
+    let tokens = scanner.get_tokens();
+
+    let mut parsers = interpret_parser::new(tokens.to_owned());
+    let expr = parsers.parse();
+    ast_visitors::interpret(&expr)
 }
 
 fn run_prompt() {
