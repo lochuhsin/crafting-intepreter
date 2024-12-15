@@ -6,12 +6,19 @@ release:
 coverage:
 	cargo tarpaulin --out html
 
-# This is optional
+
+# This is optional or using for first time 
 .PHONY: install-all
 install-all:
-	make install-coverage
+	make install-cargo && \
+	make install-cargo-dep
 
-# Additional cargo packages #
-.PHONY: install-coverage
-install-coverage:
+# first time, no cargo
+.PHONY: install-cargo
+install-cargo:
+	curl https://sh.rustup.rs -sSf | sh
+
+##### Additional cargo packages #####
+.PHONY: install-cargo-dep
+install-cargo-dep:
 	cargo install cargo-tarpaulin
