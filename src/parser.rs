@@ -25,7 +25,12 @@ use crate::{
  * Factor: /, *
  * Unary: !, -
  *
- * expression       -> equality
+ * // a, b, c, d, e
+// expression (comma expression)*
+// (expression comma) * expression
+
+ * expression       -> comma
+ * comma ->         -> equality ( (",") equality ) *
  * equality         -> comparison ( ( "!=" | "==") comparison )*
  * comparison       -> term ( ( ">" | ">=" | "<=" | "<") term )*
  * term             -> factor ( ( "-" | "+" ) factor )*
@@ -49,11 +54,21 @@ impl Parser {
         self.expression()
     }
 
-    pub fn expression(&mut self) -> Box<dyn Expression> {
-        self.equality()
+    fn expression(&mut self) -> Box<dyn Expression> {
+        self.comma()
     }
 
-    pub fn equality(&mut self) -> Box<dyn Expression> {
+    fn comma(&mut self) -> Box<dyn Expression> {
+        let mut expr = self.equality();
+        while self.match_tokens(&[TokenType::Comma]) {
+            let right = self.equality();
+            let operator = self.previous();
+            expr = Box::new(Binary::new(expr, operator.clone(), right))
+        }
+        expr
+    }
+
+    fn equality(&mut self) -> Box<dyn Expression> {
         let mut expr: Box<dyn Expression> = self.comparison();
         while self.match_tokens(&[TokenType::BangEqual, TokenType::EqualEqual]) {
             // https://stackoverflow.com/questions/76151846/cannot-borrow-self-as-immutable-because-it-is-also-borrowed-as-mutable-d
@@ -65,7 +80,7 @@ impl Parser {
         expr
     }
 
-    pub fn comparison(&mut self) -> Box<dyn Expression> {
+    fn comparison(&mut self) -> Box<dyn Expression> {
         let mut expr: Box<dyn Expression> = self.term();
         while self.match_tokens(&[
             TokenType::GreaterEqual,
@@ -80,7 +95,7 @@ impl Parser {
         expr
     }
 
-    pub fn term(&mut self) -> Box<dyn Expression> {
+    fn term(&mut self) -> Box<dyn Expression> {
         let mut expr = self.factor();
         while self.match_tokens(&[TokenType::Plus, TokenType::Minus]) {
             let token = self.factor();
@@ -90,7 +105,7 @@ impl Parser {
         expr
     }
 
-    pub fn factor(&mut self) -> Box<dyn Expression> {
+    fn factor(&mut self) -> Box<dyn Expression> {
         let mut expr = self.unary();
         while self.match_tokens(&[TokenType::Slash, TokenType::Star]) {
             let token = self.unary();
@@ -100,7 +115,7 @@ impl Parser {
         expr
     }
 
-    pub fn unary(&mut self) -> Box<dyn Expression> {
+    fn unary(&mut self) -> Box<dyn Expression> {
         if self.match_tokens(&[TokenType::Bang, TokenType::Minus]) {
             Box::new(Unary::new(self.previous().clone(), self.unary()))
         } else {
@@ -108,7 +123,7 @@ impl Parser {
         }
     }
 
-    pub fn primary(&mut self) -> Box<dyn Expression> {
+    fn primary(&mut self) -> Box<dyn Expression> {
         if self.match_tokens(&[
             TokenType::False,
             TokenType::True,

@@ -90,4 +90,21 @@ mod test {
         println!("{}", ast_visitors::format_ast(&expr));
         assert_eq!(expr.expr_type(), ExpressionType::Unary);
     }
+
+    #[test]
+    fn parse_comma_grammar() {
+        let tokens = vec![
+            gen_str_token("a"),
+            gen_by_operator(TokenType::Comma),
+            gen_str_token("a"),
+            gen_by_operator(TokenType::Comma),
+            gen_str_token("a"),
+            gen_by_operator(TokenType::Comma),
+            gen_eof(),
+        ];
+
+        let mut parser = Parser::new(tokens);
+        let expr = parser.parse();
+        assert_eq!(expr.expr_type(), ExpressionType::Binary);
+    }
 }
