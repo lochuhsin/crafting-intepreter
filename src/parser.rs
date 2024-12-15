@@ -1,6 +1,6 @@
 use crate::{
     ast::{Binary, Expression, Grouping, Literal, Unary, UnknownExpression},
-    errors,
+    errors::{self, error, parse_error},
     tokens::{Token, TokenType},
 };
 
@@ -17,14 +17,25 @@ use crate::{
  * Unary: !, -
  *
  *
+ * (a == b ? a == c : (a == f ? b == c : b == g))
+ *
  * expression       -> comma
- * comma ->         -> equality ( (",") equality ) *
+ * comma            -> ternary ( (",") ternary ) *
+ * ternary          -> equality (? equality : equality )*
  * equality         -> comparison ( ( "!=" | "==") comparison )*
  * comparison       -> term ( ( ">" | ">=" | "<=" | "<") term )*
  * term             -> factor ( ( "-" | "+" ) factor )*
  * factor           -> unary (( "/" | "*" ) unary )*
  * unary            -> ( "!" | "-") unary | primary;
  * primary          -> NUMBER | STRING | "true" | "false" | "nil" | ( expression)
+ *
+ *
+ * ternary
+ *
+ *       ?
+ * expr       :
+ *      expr      expr
+ * (e ? e : e) ? e : e
  */
 
 #[derive(Default)]
@@ -47,11 +58,37 @@ impl Parser {
     }
 
     fn comma(&mut self) -> Box<dyn Expression> {
-        let mut expr = self.equality();
+        let mut expr = self.ternary();
         while self.match_tokens(&[TokenType::Comma]) {
-            let right = self.equality();
             let operator = self.previous();
+            let right = self.ternary();
             expr = Box::new(Binary::new(expr, operator.clone(), right))
+        }
+        expr
+    }
+
+    fn ternary(&mut self) -> Box<dyn Expression> {
+        /*
+         * Note: LoL, I'm using left associative. In fact
+         * this should be written as right associative
+         * still figuring out how to implement right associative
+         *
+         * ((a ? b : c )? b : c)
+         */
+        // equality (? equality : equality )*
+        let mut expr = self.equality();
+        while self.match_tokens(&[TokenType::QuestionMark]) {
+            let question = self.previous();
+            let mid = self.equality();
+
+            if self.match_tokens(&[TokenType::Colon]) {
+            } else {
+                parse_error(self.peek(), "Invalid ternary expression, missing Colon");
+            }
+            let colon = self.previous();
+            let right = self.equality();
+            let sub_binary = Box::new(Binary::new(mid, colon, right));
+            expr = Box::new(Binary::new(expr, question, sub_binary));
         }
         expr
     }
@@ -61,8 +98,8 @@ impl Parser {
         while self.match_tokens(&[TokenType::BangEqual, TokenType::EqualEqual]) {
             // https://stackoverflow.com/questions/76151846/cannot-borrow-self-as-immutable-because-it-is-also-borrowed-as-mutable-d
             // important, so switch the order of right and operator
-            let right = self.comparison();
             let operator = self.previous();
+            let right = self.comparison();
             expr = Box::new(Binary::new(expr, operator.clone(), right))
         }
         expr
@@ -76,8 +113,8 @@ impl Parser {
             TokenType::LessEqual,
             TokenType::Less,
         ]) {
-            let right = self.term();
             let operator = self.previous();
+            let right = self.term();
             expr = Box::new(Binary::new(expr, operator.clone(), right));
         }
         expr
@@ -86,8 +123,8 @@ impl Parser {
     fn term(&mut self) -> Box<dyn Expression> {
         let mut expr = self.factor();
         while self.match_tokens(&[TokenType::Plus, TokenType::Minus]) {
-            let token = self.factor();
             let operator = self.previous();
+            let token = self.factor();
             expr = Box::new(Binary::new(expr, operator.clone(), token))
         }
         expr
@@ -96,8 +133,8 @@ impl Parser {
     fn factor(&mut self) -> Box<dyn Expression> {
         let mut expr = self.unary();
         while self.match_tokens(&[TokenType::Slash, TokenType::Star]) {
-            let token = self.unary();
             let operator = self.previous();
+            let token = self.unary();
             expr = Box::new(Binary::new(expr, operator.clone(), token))
         }
         expr
@@ -174,8 +211,8 @@ impl Parser {
         token
     }
 
-    fn previous(&self) -> &Token {
-        &self.tokens[self.current - 1]
+    fn previous(&self) -> Token {
+        self.tokens[self.current - 1].clone()
     }
 
     fn synchronize(&mut self) {

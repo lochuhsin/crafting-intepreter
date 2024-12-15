@@ -13,6 +13,8 @@ pub enum TokenType {
     Semicolon,
     Slash,
     Star,
+    Colon,
+    QuestionMark,
 
     // One or two character tokens
     Bang,
@@ -64,9 +66,11 @@ impl TokenType {
             TokenType::Dot => ".",
             TokenType::Minus => "-",
             TokenType::Plus => "+",
+            TokenType::Colon => ":",
             TokenType::Semicolon => ";",
             TokenType::Slash => "/",
             TokenType::Star => "*",
+            TokenType::QuestionMark => "?",
 
             // One or two character tokens
             TokenType::Bang => "!",
