@@ -1,4 +1,4 @@
-use crate::tokens::{Token, TokenType};
+use crate::ast::tokens::{Token, TokenType};
 use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -65,7 +65,7 @@ pub trait Expression: Display {
     fn evaluate(&self) -> Option<EvaluateValue>;
 }
 
-impl Expression for Literal
+impl Expression for LiteralExpr
 where
     Self: Display,
 {
@@ -108,13 +108,13 @@ where
     }
 }
 
-impl Display for Literal {
+impl Display for LiteralExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.token.get_lexeme())
     }
 }
 
-impl Expression for Grouping
+impl Expression for GroupExpr
 where
     Self: Display,
 {
@@ -125,13 +125,13 @@ where
         self.expr.evaluate()
     }
 }
-impl Display for Grouping {
+impl Display for GroupExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "( grouping {} )", self.expr)
     }
 }
 
-impl Expression for Unary
+impl Expression for UnaryExpr
 where
     Self: Display,
 {
@@ -181,13 +181,13 @@ where
     }
 }
 
-impl Display for Unary {
+impl Display for UnaryExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "( {} {} )", self.operator.get_lexeme(), self.right)
     }
 }
 
-impl Expression for Binary
+impl Expression for BinaryExpr
 where
     Self: Display,
 {
@@ -219,15 +219,15 @@ where
 
         let operator_type = self.operator.get_token_type();
         match l.eval_type {
-            EvaluationType::String => Binary::eval_string(&l, &r, operator_type),
-            EvaluationType::Number => Binary::eval_number(&l, &r, operator_type),
-            EvaluationType::Nil => Binary::eval_nil(&l, &r, operator_type),
-            EvaluationType::Bool => Binary::eval_bool(&l, &r, operator_type),
+            EvaluationType::String => BinaryExpr::eval_string(&l, &r, operator_type),
+            EvaluationType::Number => BinaryExpr::eval_number(&l, &r, operator_type),
+            EvaluationType::Nil => BinaryExpr::eval_nil(&l, &r, operator_type),
+            EvaluationType::Bool => BinaryExpr::eval_bool(&l, &r, operator_type),
         }
     }
 }
 
-impl Display for Binary {
+impl Display for BinaryExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -239,20 +239,21 @@ impl Display for Binary {
     }
 }
 
-impl Expression for UnknownExpression
+impl Expression for UnknownExpr
 where
-    UnknownExpression: Display,
+    UnknownExpr: Display,
 {
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::UnknownExpression
     }
 
     fn evaluate(&self) -> Option<EvaluateValue> {
+        runtime_error("found unknown expression");
         None
     }
 }
 
-impl Display for UnknownExpression {
+impl Display for UnknownExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "( found unknown expression )")
     }
@@ -260,58 +261,58 @@ impl Display for UnknownExpression {
 
 // Useful for parser to identify errors
 #[derive(Default)]
-pub struct UnknownExpression {}
+pub struct UnknownExpr {}
 
-impl UnknownExpression {
+impl UnknownExpr {
     pub fn new() -> Self {
-        UnknownExpression {}
+        UnknownExpr {}
     }
 }
 
-pub struct Literal {
+pub struct LiteralExpr {
     pub token: Token,
     pub value: String,
 }
 
-impl Literal {
+impl LiteralExpr {
     pub fn new(token: Token) -> Self {
-        Literal {
+        LiteralExpr {
             value: token.get_lexeme(),
             token,
         }
     }
 }
 
-pub struct Grouping {
+pub struct GroupExpr {
     pub expr: Box<dyn Expression>,
 }
 
-impl Grouping {
+impl GroupExpr {
     pub fn new(expr: Box<dyn Expression>) -> Self {
-        Grouping { expr }
+        GroupExpr { expr }
     }
 }
 
-pub struct Unary {
+pub struct UnaryExpr {
     pub operator: Token,
     pub right: Box<dyn Expression>,
 }
 
-impl Unary {
+impl UnaryExpr {
     pub fn new(operator: Token, right: Box<dyn Expression>) -> Self {
-        Unary { operator, right }
+        UnaryExpr { operator, right }
     }
 }
 
-pub struct Binary {
+pub struct BinaryExpr {
     pub left: Box<dyn Expression>,
     pub operator: Token,
     pub right: Box<dyn Expression>,
 }
 
-impl Binary {
+impl BinaryExpr {
     pub fn new(left: Box<dyn Expression>, token: Token, right: Box<dyn Expression>) -> Self {
-        Binary {
+        BinaryExpr {
             left,
             operator: token,
             right,

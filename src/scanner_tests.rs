@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::{scanner::Scanner, tokens::TokenType};
+    use crate::{ast::tokens::TokenType, scanner::Scanner};
 
     #[test]
     fn scan_string() {

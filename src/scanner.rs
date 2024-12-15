@@ -1,5 +1,5 @@
+use crate::ast::tokens::{Token, TokenType};
 use crate::errors::error;
-use crate::tokens::{Token, TokenType};
 #[derive(Default)]
 pub struct Scanner {
     source: String,

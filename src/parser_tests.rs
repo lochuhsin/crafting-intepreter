@@ -2,8 +2,8 @@
 mod test {
     use crate::parser::Parser;
     use crate::{
-        ast::ExpressionType,
-        tokens::{Token, TokenType},
+        ast::expressions::ExpressionType,
+        ast::tokens::{Token, TokenType},
     };
 
     fn gen_num_token(value: usize) -> Token {
@@ -32,7 +32,7 @@ mod test {
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.parse_expr_for_test();
         assert_eq!(expr.expr_type(), ExpressionType::Binary);
     }
     #[test]
@@ -45,7 +45,7 @@ mod test {
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.parse_expr_for_test();
         assert_eq!(expr.expr_type(), ExpressionType::Binary);
     }
 
@@ -58,7 +58,7 @@ mod test {
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.parse_expr_for_test();
         assert_eq!(expr.expr_type(), ExpressionType::Grouping);
     }
 
@@ -67,7 +67,7 @@ mod test {
         let tokens = vec![gen_str_token("abcde"), gen_eof()];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.parse_expr_for_test();
         assert_eq!(expr.expr_type(), ExpressionType::Literal);
     }
 
@@ -80,7 +80,7 @@ mod test {
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.parse_expr_for_test();
         assert_eq!(expr.expr_type(), ExpressionType::Unary);
     }
 
@@ -97,7 +97,7 @@ mod test {
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.parse_expr_for_test();
         assert_eq!(expr.expr_type(), ExpressionType::Binary);
     }
 }

@@ -1,7 +1,8 @@
 use crate::{
-    ast::{Binary, Expression, Grouping, Literal, Unary, UnknownExpression},
+    ast::expressions::{BinaryExpr, Expression, GroupExpr, LiteralExpr, UnaryExpr, UnknownExpr},
+    ast::statements::{ExpressionStat, PrintStat, Statement},
+    ast::tokens::{Token, TokenType},
     errors::report,
-    tokens::{Token, TokenType},
 };
 
 /*
@@ -16,8 +17,7 @@ use crate::{
  * Factor: /, *
  * Unary: !, -
  *
- *
- * (a == b ? a == c : (a == f ? b == c : b == g))
+ * Expressions ----------------------------------------------------------------
  *
  * expression       -> comma
  * comma            -> ternary ( (",") ternary ) *
@@ -30,12 +30,11 @@ use crate::{
  * primary          -> NUMBER | STRING | "true" | "false" | "nil" | ( expression)
  *
  *
- * ternary
  *
- *       ?
- * expr       :
- *      expr      expr
- * (e ? e : e) ? e : e
+ * Statements ----------------------------------------------------------------
+ *
+ *
+ *
  */
 
 #[derive(Default)]
@@ -49,7 +48,35 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Box<dyn Expression> {
+    pub fn parse(&mut self) -> Vec<Box<dyn Statement>> {
+        let mut statements = Vec::<Box<dyn Statement>>::new();
+        while !self.is_at_end() {
+            statements.push(self.statement())
+        }
+        statements
+    }
+
+    fn statement(&mut self) -> Box<dyn Statement> {
+        if self.match_tokens(&[TokenType::Print]) {
+            self.print_statement()
+        } else {
+            self.expression_statement()
+        }
+    }
+
+    fn print_statement(&mut self) -> Box<dyn Statement> {
+        let expr = self.expression();
+        self.consume(&TokenType::Semicolon, "Expect ; after value");
+        Box::new(PrintStat::new(expr))
+    }
+
+    fn expression_statement(&mut self) -> Box<dyn Statement> {
+        let expr = self.expression();
+        self.consume(&TokenType::Semicolon, "Expect ; after value");
+        Box::new(ExpressionStat::new(expr))
+    }
+
+    pub fn parse_expr_for_test(&mut self) -> Box<dyn Expression> {
         self.expression()
     }
 
@@ -62,7 +89,7 @@ impl Parser {
         while self.match_tokens(&[TokenType::Comma]) {
             let operator = self.previous();
             let right = self.ternary();
-            expr = Box::new(Binary::new(expr, operator.clone(), right))
+            expr = Box::new(BinaryExpr::new(expr, operator.clone(), right))
         }
         expr
     }
@@ -86,8 +113,8 @@ impl Parser {
             }
             let colon = self.previous();
             let right = self.equality();
-            let sub_binary = Box::new(Binary::new(mid, colon, right));
-            expr = Box::new(Binary::new(expr, question, sub_binary));
+            let sub_binary = Box::new(BinaryExpr::new(mid, colon, right));
+            expr = Box::new(BinaryExpr::new(expr, question, sub_binary));
         }
         expr
     }
@@ -99,7 +126,7 @@ impl Parser {
             // important, so switch the order of right and operator
             let operator = self.previous();
             let right = self.comparison();
-            expr = Box::new(Binary::new(expr, operator.clone(), right))
+            expr = Box::new(BinaryExpr::new(expr, operator.clone(), right))
         }
         expr
     }
@@ -114,7 +141,7 @@ impl Parser {
         ]) {
             let operator = self.previous();
             let right = self.term();
-            expr = Box::new(Binary::new(expr, operator.clone(), right));
+            expr = Box::new(BinaryExpr::new(expr, operator.clone(), right));
         }
         expr
     }
@@ -124,7 +151,7 @@ impl Parser {
         while self.match_tokens(&[TokenType::Plus, TokenType::Minus]) {
             let operator = self.previous();
             let token = self.factor();
-            expr = Box::new(Binary::new(expr, operator.clone(), token))
+            expr = Box::new(BinaryExpr::new(expr, operator.clone(), token))
         }
         expr
     }
@@ -134,14 +161,14 @@ impl Parser {
         while self.match_tokens(&[TokenType::Slash, TokenType::Star]) {
             let operator = self.previous();
             let token = self.unary();
-            expr = Box::new(Binary::new(expr, operator.clone(), token))
+            expr = Box::new(BinaryExpr::new(expr, operator.clone(), token))
         }
         expr
     }
 
     fn unary(&mut self) -> Box<dyn Expression> {
         if self.match_tokens(&[TokenType::Bang, TokenType::Minus]) {
-            Box::new(Unary::new(self.previous().clone(), self.unary()))
+            Box::new(UnaryExpr::new(self.previous().clone(), self.unary()))
         } else {
             self.primary()
         }
@@ -155,13 +182,13 @@ impl Parser {
             TokenType::String,
             TokenType::Number,
         ]) {
-            Box::new(Literal::new(self.previous().clone()))
+            Box::new(LiteralExpr::new(self.previous().clone()))
         } else if self.match_tokens(&[TokenType::LeftParen]) {
             let expr = self.expression();
             self.consume(&TokenType::RightParen, "Expect ')' after expression");
-            Box::new(Grouping::new(expr))
+            Box::new(GroupExpr::new(expr))
         } else {
-            Box::new(UnknownExpression::new())
+            Box::new(UnknownExpr::new())
         }
     }
 
