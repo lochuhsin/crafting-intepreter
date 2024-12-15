@@ -128,7 +128,7 @@ impl TokenType {
         }
     }
 }
-
+#[derive(Clone)]
 pub struct Token {
     token_type: TokenType,
     lexeme: String,
@@ -146,8 +146,8 @@ impl Token {
         }
     }
 
-    pub fn get_token_type(&self) -> TokenType {
-        self.token_type
+    pub fn get_token_type(&self) -> &TokenType {
+        &self.token_type
     }
 
     pub fn get_literal(&self) -> String {
@@ -156,6 +156,10 @@ impl Token {
 
     pub fn get_lexeme(&self) -> String {
         self.lexeme.clone()
+    }
+
+    pub fn get_line(&self) -> usize {
+        self.line
     }
 }
 

@@ -270,7 +270,7 @@ impl Scanner {
     pub fn get_token_types(&self) -> Vec<TokenType> {
         let mut v: Vec<TokenType> = Vec::new();
         for t in &self.tokens {
-            v.push(t.get_token_type());
+            v.push(*t.get_token_type());
         }
         v
     }

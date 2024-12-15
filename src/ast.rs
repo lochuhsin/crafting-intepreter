@@ -1,55 +1,41 @@
 use crate::tokens::Token;
-/* The basic concept of Context Free Grammar
- * expression -> literal | unary | binary | grouping
- * literal -> Number | String | "true" | "false" | "nil"
- * grouping -> "(" expression ")"
- * unary -> ("-" | "!") expression
- * binary -> expression operator expression
- * operator -> "==" | "!=" ... etc
- *
- * The actual grammar expression that we would use:
- *
- * Note: We would need to define the Precedence for different operators
- * and the associativity for evaluation (left associative of right associative).
- *
- * Each rule here only matches the expressions at its precedence level or higher.
- *
- * Equality: ==, !=
- * Comparison: >, >=, <=, <
- * Term: -, +
- * Factor: /, *
- * Unary: !, -
- *
- * expression       -> equality
- * equality         -> comparison ( ( "!=" | "==") comparison )*
- * comparison       -> term ( ( ">" | ">=" | "<=" | "<") term )*
- * term             -> factor ( ( "-" | "+" ) factor )*
- * factor           -> unary (( "/" | "*" ) unary )*
- * unary            -> ( "!" | "-") unary | primary;
- * primary          -> NUMBER | STRING | "true" | "false" | "nil" | ( expression)
- */
+
+// Just for convenience, since if we pass expression with trait object
+// we loose type information. this is a way that somehow we could get
+// the type info if needed.
+pub enum ExpressionType {
+    Literal,
+    Grouping,
+    Unary,
+    Binary,
+    UnknownExpression,
+}
 
 pub trait Expression {
-    fn is_expr(&self);
     fn format_string(&self) -> String;
+    // Just a helper function
+    fn expr_type(&self) -> ExpressionType;
 }
 
 impl Expression for Literal {
-    fn is_expr(&self) {}
     fn format_string(&self) -> String {
         self.token.get_literal()
+    }
+    fn expr_type(&self) -> ExpressionType {
+        ExpressionType::Literal
     }
 }
 
 impl Expression for Grouping {
-    fn is_expr(&self) {}
     fn format_string(&self) -> String {
         format!("( grouping {} )", self.expr.format_string().as_str())
+    }
+    fn expr_type(&self) -> ExpressionType {
+        ExpressionType::Grouping
     }
 }
 
 impl Expression for Unary {
-    fn is_expr(&self) {}
     fn format_string(&self) -> String {
         format!(
             "( {} {} )",
@@ -57,10 +43,12 @@ impl Expression for Unary {
             self.right.format_string().as_str()
         )
     }
+    fn expr_type(&self) -> ExpressionType {
+        ExpressionType::Unary
+    }
 }
 
 impl Expression for Binary {
-    fn is_expr(&self) {}
     fn format_string(&self) -> String {
         format!(
             "( {} {} {} )",
@@ -68,6 +56,28 @@ impl Expression for Binary {
             self.left.format_string().as_str(),
             self.right.format_string().as_str()
         )
+    }
+    fn expr_type(&self) -> ExpressionType {
+        ExpressionType::Binary
+    }
+}
+
+impl Expression for UnknownExpression {
+    fn format_string(&self) -> String {
+        "( found unknown expression )".to_string()
+    }
+    fn expr_type(&self) -> ExpressionType {
+        ExpressionType::UnknownExpression
+    }
+}
+
+// Useful for parser to identify errors
+#[derive(Default)]
+pub struct UnknownExpression {}
+
+impl UnknownExpression {
+    pub fn new() -> Self {
+        UnknownExpression {}
     }
 }
 
@@ -82,19 +92,12 @@ impl Literal {
 }
 
 pub struct Grouping {
-    pub left: Token,
     pub expr: Box<dyn Expression>,
-    pub right: Token,
 }
 
 impl Grouping {
-    pub fn new(left: Token, expr: impl Expression + 'static, right: Token) -> Self {
-        let e = Box::new(expr);
-        Grouping {
-            left,
-            expr: e,
-            right,
-        }
+    pub fn new(expr: Box<dyn Expression>) -> Self {
+        Grouping { expr }
     }
 }
 
@@ -104,9 +107,8 @@ pub struct Unary {
 }
 
 impl Unary {
-    pub fn new(operator: Token, right: impl Expression + 'static) -> Self {
-        let e = Box::new(right);
-        Unary { operator, right: e }
+    pub fn new(operator: Token, right: Box<dyn Expression>) -> Self {
+        Unary { operator, right }
     }
 }
 
@@ -117,17 +119,11 @@ pub struct Binary {
 }
 
 impl Binary {
-    pub fn new(
-        left: impl Expression + 'static,
-        token: Token,
-        right: impl Expression + 'static,
-    ) -> Self {
-        let l = Box::new(left);
-        let r = Box::new(right);
+    pub fn new(left: Box<dyn Expression>, token: Token, right: Box<dyn Expression>) -> Self {
         Binary {
-            left: l,
+            left,
             operator: token,
-            right: r,
+            right,
         }
     }
 }
