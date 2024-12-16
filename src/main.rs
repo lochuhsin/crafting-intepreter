@@ -1,93 +1,56 @@
-use clap::Parser;
-use core::panic;
-use interpreters::ast::interpreter;
-use interpreters::parser::Parser as interpret_parser;
-use interpreters::scanner::Scanner;
-use std::fs::File;
-use std::io::{stdout, Read, Write};
-use std::path::PathBuf;
-
-/// Simple program to greet a person
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    #[arg(short, long, value_delimiter = ' ', num_args=1..)]
-    path: Vec<PathBuf>,
-}
-
-fn trim_end(s: &mut String) {
-    if s.ends_with('\n') {
-        s.pop();
-
-        if s.ends_with('\r') {
-            s.pop();
-        }
-    }
-}
-
-fn run(s: String) -> Option<String> {
-    // let Ok(new_s) = String::from_str("asfdasdfasdf");
-    // new_s
-    let mut scanner = Scanner::new(s);
-    scanner.scan_tokens();
-    let tokens = scanner.get_tokens();
-
-    let mut parsers = interpret_parser::new(tokens.to_owned());
-    // let expr = parsers.parse_expr_for_test();
-    // visitors::Interpreter::interpret_expr_ast(&expr);
-
-    let statements = parsers.parse();
-    let mut interpreter = interpreter::Interpreter::new();
-    interpreter.interpret_ast(&statements[0..statements.len()]);
-    Some("".to_owned())
-}
-
-fn run_prompt() {
-    loop {
-        print!(">> ");
-        let _ = stdout().flush();
-        let mut s = String::new();
-        let r = std::io::stdin().read_line(&mut s);
-
-        match r {
-            Ok(_) => {
-                // print!("{}", s)
-            }
-            Err(_) => println!("Something went wrong while reading from prompt"),
-        };
-        trim_end(&mut s);
-        if s == *"exit" {
-            break;
-        }
-        let output = run(s.clone());
-        if let Some(result) = output {
-            println!("{}", result)
-        } else {
-            println!("{}", s)
-        }
-    }
-}
-
-fn run_file(path: &PathBuf) {
-    let mut contents = String::new();
-
-    if let Ok(mut file) = File::open(path) {
-        let _ = file.read_to_string(&mut contents);
-    } else {
-        panic!("Couldn't open file or file doesn't not exist")
-    }
-    run(contents);
-}
+use lolang::chunk::{Chunk, OpCode};
 
 fn main() {
-    let args = Args::parse();
+    let mut ch = Chunk::default();
+    // constant instruction
+    let constant = ch.add_const(1.2);
+    ch.write_chunk(OpCode::OpConstant as usize, 123);
+    ch.write_chunk(constant, 123);
+    // simple instruction
+    ch.write_chunk(OpCode::OpReturn as usize, 123);
 
-    if args.path.is_empty() {
-        run_prompt();
-    } else if args.path.len() == 1 {
-        let path = &args.path[0];
-        run_file(path);
-    } else {
-        panic!("Multiple file parsing not supported yet");
+    disassemble_chunk(&ch, "test instructions");
+}
+
+fn disassemble_chunk(chunk: &Chunk, name: &str) {
+    println!("== {} ==", name);
+
+    let mut offset = 0;
+    while offset < chunk.count {
+        offset = disassemble_instruction(chunk, offset)
     }
+}
+
+fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
+    print!("{:04}   ", offset);
+
+    let instruction = OpCode::from_usize(chunk.bytecode[offset]);
+
+    if offset > 0 && chunk.lines[offset] == chunk.lines[offset - 1] {
+        print!(" |     ")
+    } else {
+        print!("{:04}   ", chunk.lines[offset])
+    }
+
+    match instruction {
+        OpCode::OpReturn => simple_instruction(instruction, offset),
+        OpCode::OpConstant => constant_instruction(instruction, offset, chunk),
+        _ => {
+            println!("Unknown instruction");
+            offset + 1
+        }
+    }
+}
+
+fn simple_instruction(op: OpCode, offset: usize) -> usize {
+    println!("{}", op);
+    offset + 1
+}
+
+fn constant_instruction(op: OpCode, offset: usize, chunk: &Chunk) -> usize {
+    let constant = chunk.bytecode[offset + 1];
+    let val = chunk.const_pool.values[constant];
+
+    println!("{}{}'{}'", op, " ".repeat(15), val);
+    offset + 2
 }
