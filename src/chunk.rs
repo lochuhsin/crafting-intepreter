@@ -6,6 +6,7 @@ use crate::value::{Value, ValueArray};
 pub enum OpCode {
     OpReturn = 1,
     OpConstant = 2,
+    OpNegate = 3,
 }
 
 impl OpCode {
@@ -13,6 +14,7 @@ impl OpCode {
         match value {
             1 => OpCode::OpReturn,
             2 => OpCode::OpConstant,
+            3 => OpCode::OpNegate,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -23,6 +25,7 @@ impl Display for OpCode {
         let s = match *self {
             OpCode::OpReturn => "OP_RETURN",
             OpCode::OpConstant => "OP_CONST",
+            OpCode::OpNegate => "OP_NEGATE",
         };
         write!(f, "{}", s)
     }
