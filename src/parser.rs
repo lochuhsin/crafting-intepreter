@@ -1,7 +1,13 @@
+use std::os::macos::raw::stat;
+
 use crate::{
-    ast::expressions::{BinaryExpr, Expression, GroupExpr, LiteralExpr, UnaryExpr, UnknownExpr},
-    ast::statements::{ExpressionStat, PrintStat, Statement},
-    ast::tokens::{Token, TokenType},
+    ast::{
+        expressions::{
+            BinaryExpr, Expression, GroupExpr, LiteralExpr, UnaryExpr, UnknownExpr, VariableExpr,
+        },
+        statements::{ExpressionStat, PrintStat, Statement, VariableStat},
+        tokens::{Token, TokenType},
+    },
     errors::report,
 };
 
@@ -26,12 +32,20 @@ use crate::{
  * comparison       -> term ( ( ">" | ">=" | "<=" | "<") term )*
  * term             -> factor ( ( "-" | "+" ) factor )*
  * factor           -> unary (( "/" | "*" ) unary )*
- * unary            -> ( "!" | "-") unary | primary;
- * primary          -> NUMBER | STRING | "true" | "false" | "nil" | ( expression)
+ * unary            -> ( "!" | "-") unary | primary
+ * primary          -> NUMBER | STRING | "true" | "false" | "nil" | ( expression ) | IDENTIFIER
  *
  *
  *
  * Statements ----------------------------------------------------------------
+ *
+ *
+ * program          -> declaration* EOF;
+ *
+ * declaration     -> varDecl | statements;
+ * varDecl          -> "var" IDENTIFIER ("=" expression)? ";";
+ *
+ * statement        -> exprStmt | printStmt;
  *
  *
  *
@@ -51,19 +65,29 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Box<dyn Statement>> {
         let mut statements = Vec::<Box<dyn Statement>>::new();
         while !self.is_at_end() {
-            if let Some(stat) = self.get_statement() {
-                statements.push(stat);
+            if let Some(st) = self.declaration() {
+                statements.push(st);
             } else {
-                /*
-                 * Runtime statement error
-                 */
+                println!("Something went wrong when parsing statement, break for now");
                 break;
             }
         }
         statements
     }
 
-    fn get_statement(&mut self) -> Option<Box<dyn Statement>> {
+    fn declaration(&mut self) -> Option<Box<dyn Statement>> {
+        let decl = if self.match_tokens(&[TokenType::Var]) {
+            self.var_decl()
+        } else {
+            self.statement()
+        };
+        if decl.is_none() {
+            self.synchronize();
+        }
+        decl
+    }
+
+    fn statement(&mut self) -> Option<Box<dyn Statement>> {
         if self.match_tokens(&[TokenType::Print]) {
             self.print_statement()
         } else {
@@ -74,7 +98,10 @@ impl Parser {
     // This is some what similar to default functions
     fn print_statement(&mut self) -> Option<Box<dyn Statement>> {
         let expr = self.expression();
-        if self.consume(&TokenType::Semicolon, "Expect ; after value") {
+        if self
+            .consume(&TokenType::Semicolon, "Expect ; after value")
+            .is_some()
+        {
             Some(Box::new(PrintStat::new(expr)))
         } else {
             None
@@ -83,8 +110,26 @@ impl Parser {
 
     fn expression_statement(&mut self) -> Option<Box<dyn Statement>> {
         let expr = self.expression();
-        if self.consume(&TokenType::Semicolon, "Expect ; after value") {
+        if self
+            .consume(&TokenType::Semicolon, "Expect ; after value")
+            .is_some()
+        {
             Some(Box::new(ExpressionStat::new(expr)))
+        } else {
+            None
+        }
+    }
+
+    fn var_decl(&mut self) -> Option<Box<dyn Statement>> {
+        if let Some(token) = self.consume(&TokenType::Identifier, "Expect Variable name.") {
+            let intializer = if self.match_tokens(&[TokenType::Equal]) {
+                let obj = self.expression();
+                Some(obj)
+            } else {
+                None
+            };
+            self.consume(&TokenType::Semicolon, "Expect ; after variable declaration");
+            Some(Box::new(VariableStat::new(token, intializer)))
         } else {
             None
         }
@@ -197,6 +242,8 @@ impl Parser {
             TokenType::Number,
         ]) {
             Box::new(LiteralExpr::new(self.previous().clone()))
+        } else if self.match_tokens(&[TokenType::Identifier]) {
+            Box::new(VariableExpr::new(self.previous()))
         } else if self.match_tokens(&[TokenType::LeftParen]) {
             let expr = self.expression();
             self.consume(&TokenType::RightParen, "Expect ')' after expression");
@@ -219,15 +266,15 @@ impl Parser {
         flag
     }
 
-    fn consume(&mut self, token_type: &TokenType, msg: &str) -> bool {
+    fn consume(&mut self, token_type: &TokenType, msg: &str) -> Option<Token> {
         // TODO: Figure out a cleaner way to signal runtime error
         // Which should ... somehow stop evaluating statements
         if self.check(token_type) {
-            self.advance();
-            true
+            let token = self.advance();
+            Some(token.clone())
         } else {
             parse_error(self.peek(), msg);
-            false
+            None
         }
     }
 

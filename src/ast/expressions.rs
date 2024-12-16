@@ -1,3 +1,4 @@
+use crate::ast::environment::Environment;
 use crate::ast::tokens::{Token, TokenType};
 use std::fmt::Display;
 
@@ -20,6 +21,7 @@ impl Display for EvaluationType {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct EvaluateValue {
     pub eval_type: EvaluationType,
     pub is_empty: bool,
@@ -45,6 +47,7 @@ pub enum ExpressionType {
     Unary,
     Binary,
     UnknownExpression,
+    Variable,
 }
 impl Display for ExpressionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -53,6 +56,7 @@ impl Display for ExpressionType {
             Self::Grouping => "Grouping",
             Self::Unary => "Unary",
             Self::Binary => "Binary",
+            Self::Variable => "Variable",
             Self::UnknownExpression => "Unknown Expression",
         };
         write!(f, "{}", s)
@@ -62,7 +66,7 @@ impl Display for ExpressionType {
 pub trait Expression: Display {
     // Just a helper function
     fn expr_type(&self) -> ExpressionType;
-    fn evaluate(&self) -> Option<EvaluateValue>;
+    fn evaluate(&self, _e: &mut Environment) -> Option<EvaluateValue>;
 }
 
 impl Expression for LiteralExpr
@@ -72,7 +76,7 @@ where
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::Literal
     }
-    fn evaluate(&self) -> Option<EvaluateValue> {
+    fn evaluate(&self, _e: &mut Environment) -> Option<EvaluateValue> {
         match *self.token.get_token_type() {
             TokenType::Number => Some(EvaluateValue::new(
                 EvaluationType::Number,
@@ -121,8 +125,8 @@ where
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::Grouping
     }
-    fn evaluate(&self) -> Option<EvaluateValue> {
-        self.expr.evaluate()
+    fn evaluate(&self, _e: &mut Environment) -> Option<EvaluateValue> {
+        self.expr.evaluate(_e)
     }
 }
 impl Display for GroupExpr {
@@ -139,13 +143,13 @@ where
         ExpressionType::Unary
     }
 
-    fn evaluate(&self) -> Option<EvaluateValue> {
+    fn evaluate(&self, _e: &mut Environment) -> Option<EvaluateValue> {
         /*
          * Note, define true, false and handle when evaluate failure
          * and this is slow as fuck...
          */
 
-        if let Some(mut right_eval) = self.right.evaluate() {
+        if let Some(mut right_eval) = self.right.evaluate(_e) {
             match *self.operator.get_token_type() {
                 TokenType::Bang => {
                     let val = !is_truthy(&right_eval);
@@ -194,9 +198,9 @@ where
     fn expr_type(&self) -> ExpressionType {
         ExpressionType::Binary
     }
-    fn evaluate(&self) -> Option<EvaluateValue> {
-        let l_eval = self.left.evaluate();
-        let r_eval = self.right.evaluate();
+    fn evaluate(&self, _e: &mut Environment) -> Option<EvaluateValue> {
+        let l_eval = self.left.evaluate(_e);
+        let r_eval = self.right.evaluate(_e);
         if l_eval.is_none() || r_eval.is_none() {
             return None;
         }
@@ -247,7 +251,7 @@ where
         ExpressionType::UnknownExpression
     }
 
-    fn evaluate(&self) -> Option<EvaluateValue> {
+    fn evaluate(&self, _e: &mut Environment) -> Option<EvaluateValue> {
         runtime_error("found unknown expression");
         None
     }
@@ -584,6 +588,33 @@ impl BinaryExpr {
                 None
             } // runtime error unsupported operation
         }
+    }
+}
+
+pub struct VariableExpr {
+    name: Token,
+    eval: Option<EvaluateValue>,
+}
+
+impl VariableExpr {
+    pub fn new(name: Token) -> VariableExpr {
+        VariableExpr { name, eval: None }
+    }
+}
+
+impl Expression for VariableExpr {
+    fn evaluate(&self, _e: &mut Environment) -> Option<EvaluateValue> {
+        _e.get(self.name.get_lexeme()).cloned()
+    }
+
+    fn expr_type(&self) -> ExpressionType {
+        ExpressionType::Variable
+    }
+}
+
+impl Display for VariableExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "asdf")
     }
 }
 
