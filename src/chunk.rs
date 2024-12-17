@@ -7,6 +7,10 @@ pub enum OpCode {
     OpReturn = 1,
     OpConstant = 2,
     OpNegate = 3,
+    OpAdd = 4,
+    OpSubtract = 5,
+    OpMultiply = 6,
+    OpDivide = 7,
 }
 
 impl OpCode {
@@ -15,6 +19,10 @@ impl OpCode {
             1 => OpCode::OpReturn,
             2 => OpCode::OpConstant,
             3 => OpCode::OpNegate,
+            4 => OpCode::OpAdd,
+            5 => OpCode::OpSubtract,
+            6 => OpCode::OpMultiply,
+            7 => OpCode::OpDivide,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -26,6 +34,10 @@ impl Display for OpCode {
             OpCode::OpReturn => "OP_RETURN",
             OpCode::OpConstant => "OP_CONST",
             OpCode::OpNegate => "OP_NEGATE",
+            OpCode::OpAdd => "OP_ADD",
+            OpCode::OpSubtract => "OP_SUBTRACT",
+            OpCode::OpMultiply => "OP_MULTIPLY",
+            OpCode::OpDivide => "OP_DIVIDE",
         };
         write!(f, "{}", s)
     }

@@ -57,8 +57,27 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                 return InterpretResult::InterpretOk;
             }
             OpCode::OpNegate => {
-                let v = -vm.vm_stack.pop();
-                vm.vm_stack.push(v);
+                vm.vm_stack.negate_peek();
+            }
+            OpCode::OpAdd => {
+                let v1 = vm.vm_stack.pop();
+                let v2 = vm.vm_stack.pop(); // Handle empty value stack
+                vm.vm_stack.push(v1 + v2);
+            }
+            OpCode::OpSubtract => {
+                let v1 = vm.vm_stack.pop();
+                let v2 = vm.vm_stack.pop(); // Handle empty value stack
+                vm.vm_stack.push(v1 - v2);
+            }
+            OpCode::OpMultiply => {
+                let v1 = vm.vm_stack.pop();
+                let v2 = vm.vm_stack.pop(); // Handle empty value stack
+                vm.vm_stack.push(v1 * v2);
+            }
+            OpCode::OpDivide => {
+                let v1 = vm.vm_stack.pop();
+                let v2 = vm.vm_stack.pop(); // Handle empty value stack
+                vm.vm_stack.push(v1 / v2);
             }
         };
     }
@@ -106,6 +125,10 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         OpCode::OpReturn => simple_instruction(instruction, offset),
         OpCode::OpConstant => constant_instruction(instruction, offset, chunk),
         OpCode::OpNegate => simple_instruction(instruction, offset),
+        OpCode::OpAdd => simple_instruction(instruction, offset),
+        OpCode::OpSubtract => simple_instruction(instruction, offset),
+        OpCode::OpMultiply => simple_instruction(instruction, offset),
+        OpCode::OpDivide => simple_instruction(instruction, offset),
         _ => {
             println!("Unknown instruction");
             offset + 1
@@ -146,6 +169,21 @@ impl VirtualMachineStack {
         }
         self.top -= 1;
         self.values[self.top]
+    }
+
+    pub fn peek(&mut self) -> Value {
+        if self.top == 0 {
+            panic!("Invalid operation, empty stack ")
+        }
+        self.values[self.top - 1]
+    }
+
+    // Special optimization for OP_NEGATE
+    pub fn negate_peek(&mut self) {
+        if self.top == 0 {
+            panic!("Invalid operation, empty stack ")
+        }
+        self.values[self.top - 1] = -self.values[self.top - 1];
     }
 }
 
