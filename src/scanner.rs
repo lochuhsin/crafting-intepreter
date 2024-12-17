@@ -1,11 +1,4 @@
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum TokenType {}
-
-pub struct Token {
-    token_type: TokenType,
-    line: usize,
-    lexeme: String,
-}
+use crate::token::Token;
 
 pub struct Scanner {
     content: String,
@@ -23,4 +16,8 @@ impl Scanner {
             line: 0,
         }
     }
+}
+
+fn scan_token() -> Token {
+    unimplemented!()
 }
