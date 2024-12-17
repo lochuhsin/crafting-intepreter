@@ -1,5 +1,6 @@
 use clap::Parser;
 use core::panic;
+use lolang::scanner::Scanner;
 use lolang::vm::InterpretResult;
 use std::fs::File;
 use std::io::{stdout, Read, Write};
@@ -25,7 +26,18 @@ fn trim_end(s: &mut String) {
 }
 
 fn interpret(s: String) -> InterpretResult {
-    unimplemented!()
+    compile(s);
+    InterpretResult::InterpretOk
+}
+
+fn compile(s: String) {
+    let scanner = init_scanner(s);
+
+    loop {}
+}
+
+fn init_scanner(s: String) -> Scanner {
+    Scanner::new(s)
 }
 
 fn run_prompt() {
@@ -44,8 +56,14 @@ fn run_prompt() {
         }
         match interpret(s.clone()) {
             InterpretResult::InterpretOk => (),
-            InterpretResult::InterpretCompileError => exit(65),
-            InterpretResult::InterpretRunTimeError => exit(70),
+            InterpretResult::InterpretCompileError => {
+                println!("compile error, code: {}", 65);
+                exit(65)
+            }
+            InterpretResult::InterpretRunTimeError => {
+                println!("compile error, code: {}", 70);
+                exit(70)
+            }
         }
     }
 }
