@@ -2,7 +2,6 @@ use crate::chunk::Chunk;
 use crate::chunk::OpCode;
 use crate::constants;
 use crate::value::Value;
-// Note: Change this, don't use global variables
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InterpretResult {
@@ -129,10 +128,6 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         OpCode::OpSubtract => simple_instruction(instruction, offset),
         OpCode::OpMultiply => simple_instruction(instruction, offset),
         OpCode::OpDivide => simple_instruction(instruction, offset),
-        _ => {
-            println!("Unknown instruction");
-            offset + 1
-        }
     }
 }
 

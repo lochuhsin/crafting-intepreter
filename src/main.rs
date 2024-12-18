@@ -1,6 +1,7 @@
 use clap::Parser;
 use core::panic;
 use lolang::scanner::Scanner;
+use lolang::tokens;
 use lolang::vm::InterpretResult;
 use std::fs::File;
 use std::io::{stdout, Read, Write};
@@ -31,13 +32,9 @@ fn interpret(s: String) -> InterpretResult {
 }
 
 fn compile(s: String) {
-    let scanner = init_scanner(s);
-
-    loop {}
-}
-
-fn init_scanner(s: String) -> Scanner {
-    Scanner::new(s)
+    let mut scanner = Scanner::new(s);
+    scanner.scan_tokens();
+    let tokens = scanner.get_tokens();
 }
 
 fn run_prompt() {

@@ -1,3 +1,4 @@
+use crate::errors::error;
 use crate::tokens::{Token, TokenType};
 #[derive(Default)]
 pub struct Scanner {
@@ -6,7 +7,6 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
-    has_error: bool,
 }
 
 impl Scanner {
@@ -17,7 +17,6 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
-            has_error: false,
         }
     }
 
@@ -85,7 +84,7 @@ impl Scanner {
                     while self.peek() != '\0' && !self.is_at_end() {
                         self.advance();
                     }
-                    Some(TokenType::ParserIgnore)
+                    Some(TokenType::ParseIgnore)
                 } else if self.match_sub_ch('*') {
                     let mut closed = false;
                     while !self.is_at_end() {
@@ -102,19 +101,20 @@ impl Scanner {
                         }
                     }
                     if !closed {
-                        self.has_error = true;
                         error(self.line, "unclosed block comment".to_string());
+                        Some(TokenType::ParseError)
+                    } else {
+                        Some(TokenType::ParseIgnore)
                     }
-                    Some(TokenType::ParserIgnore)
                 } else {
                     Some(TokenType::Slash)
                 }
             }
             // Whitespace
-            ' ' | '\r' | '\t' => Some(TokenType::ParserIgnore),
+            ' ' | '\r' | '\t' => Some(TokenType::ParseIgnore),
             '\n' => {
                 self.line += 1;
-                Some(TokenType::ParserIgnore)
+                Some(TokenType::ParseIgnore)
             }
             // String Literals
             '"' => {
@@ -125,9 +125,8 @@ impl Scanner {
                     self.advance();
                 }
                 if self.is_at_end() {
-                    self.has_error = true;
                     error(self.line, String::from("Unterminated string literal"));
-                    Some(TokenType::ParserIgnore)
+                    Some(TokenType::ParseError)
                 } else {
                     self.advance(); // closing string
                     Some(TokenType::String)
@@ -149,13 +148,12 @@ impl Scanner {
             if t == TokenType::String {
                 // we trim the string concatenation ( " )
                 self.add_token_with_bound(t, self.start + 1, self.current - 1);
-            } else if t == TokenType::ParserIgnore {
+            } else if t == TokenType::ParseIgnore {
                 //pass
             } else {
                 self.add_token(t);
             }
         } else {
-            self.has_error = true;
             error(
                 self.line,
                 format!(
@@ -172,7 +170,23 @@ impl Scanner {
         while self.peek().is_alphanumeric() || self.peek() == '_' {
             self.advance();
         }
-        if let Some(t) = TokenType::keyword_to_token(&self.source[self.start..self.current]) {
+        // NOTE: this is the regular string comparison way
+        // if let Some(t) = TokenType::keyword_to_token(&self.source[self.start..self.current]) {
+        //     t
+        // } else {
+        //     TokenType::Identifier
+        // }
+
+        /*
+           abcdefg
+           ^      ^
+           |      |
+
+           st    curr
+
+           we match the string using DFA,
+        */
+        if let Some(t) = TokenType::keyword_to_token_dfa(&self.source[self.start..self.current]) {
             t
         } else {
             TokenType::Identifier
@@ -215,6 +229,7 @@ impl Scanner {
             self.line,
         ))
     }
+
     fn add_token_with_bound(&mut self, token_type: TokenType, start: usize, end: usize) {
         self.tokens.push(Token::new(
             token_type,
@@ -251,10 +266,6 @@ impl Scanner {
         let output = self.source.as_bytes()[self.current] as char;
         self.current += 1;
         output
-    }
-
-    pub fn has_error(&self) -> bool {
-        self.has_error
     }
 
     pub fn get_tokens(&self) -> &Vec<Token> {
