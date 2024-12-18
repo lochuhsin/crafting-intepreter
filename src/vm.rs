@@ -1,5 +1,6 @@
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
+use crate::compiler::compile;
 use crate::constants;
 use crate::value::Value;
 
@@ -30,12 +31,16 @@ impl VirtualMachine {
     }
 }
 
-pub fn interpret(chunk: &Chunk) -> InterpretResult {
+pub fn interpret(s: String) -> InterpretResult {
+    let mut chunk = Chunk::default();
+    if !compile(s, &mut chunk) {
+        return InterpretResult::InterpretCompileError;
+    };
     let mut vm = VirtualMachine::new(chunk.clone());
     run(&mut vm)
 }
 
-pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
+fn run(vm: &mut VirtualMachine) -> InterpretResult {
     loop {
         #[cfg(debug_assertions)]
         {

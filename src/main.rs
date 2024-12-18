@@ -1,7 +1,8 @@
 use clap::Parser;
 use core::panic;
+use lolang::chunk::Chunk;
 use lolang::scanner::Scanner;
-use lolang::tokens;
+use lolang::vm::interpret;
 use lolang::vm::InterpretResult;
 use std::fs::File;
 use std::io::{stdout, Read, Write};
@@ -24,17 +25,6 @@ fn trim_end(s: &mut String) {
             s.pop();
         }
     }
-}
-
-fn interpret(s: String) -> InterpretResult {
-    compile(s);
-    InterpretResult::InterpretOk
-}
-
-fn compile(s: String) {
-    let mut scanner = Scanner::new(s);
-    scanner.scan_tokens();
-    let tokens = scanner.get_tokens();
 }
 
 fn run_prompt() {
