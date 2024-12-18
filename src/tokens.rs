@@ -52,7 +52,6 @@ pub enum TokenType {
     EOF,
 
     // Use for parsing, just ignore this token ...etc
-    ParseIgnore,
     ParseError,
 }
 
@@ -108,7 +107,6 @@ impl TokenType {
 
             // Parser thing
             TokenType::EOF => "EOF",
-            TokenType::ParseIgnore => "ParserIgnore",
             TokenType::ParseError => "ParseError",
         }
     }

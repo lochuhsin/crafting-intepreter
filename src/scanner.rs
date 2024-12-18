@@ -24,97 +24,55 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
-    pub fn scan_tokens(&mut self) {
-        while !self.is_at_end() {
-            self.start = self.current;
-            self.scan_token();
+    pub fn scan_token(&mut self) -> Token {
+        self.skip_chars();
+        self.start = self.current;
+        if self.is_at_end() {
+            return Token::new(TokenType::EOF, String::new(), self.line);
         }
-
-        self.tokens
-            .push(Token::new(TokenType::EOF, String::new(), self.line));
-    }
-
-    fn scan_token(&mut self) {
         let ch = self.advance();
 
-        let token: Option<TokenType> = match ch {
+        let token_type: TokenType = match ch {
             // single character tokens
-            '(' => Some(TokenType::LeftParen),
-            ')' => Some(TokenType::RightParen),
-            '{' => Some(TokenType::LeftBrace),
-            '}' => Some(TokenType::RightBrace),
-            ',' => Some(TokenType::Comma),
-            '.' => Some(TokenType::Dot),
-            '-' => Some(TokenType::Minus),
-            '+' => Some(TokenType::Plus),
-            ';' => Some(TokenType::Semicolon),
-            '*' => Some(TokenType::Star),
+            '(' => TokenType::LeftParen,
+            ')' => TokenType::RightParen,
+            '{' => TokenType::LeftBrace,
+            '}' => TokenType::RightBrace,
+            ',' => TokenType::Comma,
+            '.' => TokenType::Dot,
+            '-' => TokenType::Minus,
+            '+' => TokenType::Plus,
+            ';' => TokenType::Semicolon,
+            '*' => TokenType::Star,
+            '/' => TokenType::Slash,
             // double character tokens
             '!' => {
                 if self.match_sub_ch('=') {
-                    Some(TokenType::BangEqual)
+                    TokenType::BangEqual
                 } else {
-                    Some(TokenType::Bang)
+                    TokenType::Bang
                 }
             }
             '=' => {
                 if self.match_sub_ch('=') {
-                    Some(TokenType::EqualEqual)
+                    TokenType::EqualEqual
                 } else {
-                    Some(TokenType::Equal)
+                    TokenType::Equal
                 }
             }
             '<' => {
                 if self.match_sub_ch('=') {
-                    Some(TokenType::LessEqual)
+                    TokenType::LessEqual
                 } else {
-                    Some(TokenType::Less)
+                    TokenType::Less
                 }
             }
             '>' => {
                 if self.match_sub_ch('=') {
-                    Some(TokenType::GreaterEqual)
+                    TokenType::GreaterEqual
                 } else {
-                    Some(TokenType::Greater)
+                    TokenType::Greater
                 }
-            }
-            // Comment
-            '/' => {
-                if self.match_sub_ch('/') {
-                    while self.peek() != '\0' && !self.is_at_end() {
-                        self.advance();
-                    }
-                    Some(TokenType::ParseIgnore)
-                } else if self.match_sub_ch('*') {
-                    let mut closed = false;
-                    while !self.is_at_end() {
-                        let ch = self.advance();
-                        // Note: We need to consume the '/' if we match
-                        // not using peek. Otherwise we will get an extra slash token
-                        if ch == '*' && self.match_sub_ch('/') {
-                            closed = true;
-                            break;
-                        }
-
-                        if ch == '\n' {
-                            self.line += 1;
-                        }
-                    }
-                    if !closed {
-                        error(self.line, "unclosed block comment".to_string());
-                        Some(TokenType::ParseError)
-                    } else {
-                        Some(TokenType::ParseIgnore)
-                    }
-                } else {
-                    Some(TokenType::Slash)
-                }
-            }
-            // Whitespace
-            ' ' | '\r' | '\t' => Some(TokenType::ParseIgnore),
-            '\n' => {
-                self.line += 1;
-                Some(TokenType::ParseIgnore)
             }
             // String Literals
             '"' => {
@@ -126,43 +84,60 @@ impl Scanner {
                 }
                 if self.is_at_end() {
                     error(self.line, String::from("Unterminated string literal"));
-                    Some(TokenType::ParseError)
+                    TokenType::ParseError
                 } else {
                     self.advance(); // closing string
-                    Some(TokenType::String)
+                    TokenType::String
                 }
             }
             _ => {
                 // put somewhere else
                 if ch.is_ascii_digit() {
-                    Some(self.match_number())
+                    self.match_number()
                 } else if ch.is_alphabetic() || ch == '_' {
                     // Not sure why we need _
-                    Some(self.match_identifier())
+                    self.match_identifier()
                 } else {
-                    None
+                    TokenType::ParseError
                 }
             }
         };
-        if let Some(t) = token {
-            if t == TokenType::String {
-                // we trim the string concatenation ( " )
-                self.add_token_with_bound(t, self.start + 1, self.current - 1);
-            } else if t == TokenType::ParseIgnore {
-                //pass
-            } else {
-                self.add_token(t);
+
+        match token_type {
+            TokenType::String => {
+                self.add_token_with_bound(token_type, self.start + 1, self.current - 1)
             }
-        } else {
-            error(
+            TokenType::ParseError => Token::new(
+                token_type,
+                String::from(&self.source[self.start..self.current]),
                 self.line,
-                format!(
-                    "Unexpected character: {}, at {} to {}",
-                    &self.source[self.start..self.current],
-                    self.start,
-                    self.current
-                ),
-            );
+            ),
+            _ => self.add_token(token_type),
+        }
+    }
+
+    fn skip_chars(&mut self) {
+        loop {
+            let c = self.peek();
+            match c {
+                ' ' | '\r' | '\t' => {
+                    self.advance();
+                }
+                '\n' => {
+                    self.line += 1;
+                    self.advance();
+                }
+                '/' => {
+                    if self.peek_next() == '/' {
+                        while self.peek() != '\n' && !self.is_at_end() {
+                            self.advance();
+                        }
+                    } else {
+                        return;
+                    }
+                }
+                _ => return,
+            };
         }
     }
 
@@ -222,20 +197,19 @@ impl Scanner {
         true
     }
 
-    fn add_token(&mut self, token_type: TokenType) {
-        self.tokens.push(Token::new(
+    fn add_token(&self, token_type: TokenType) -> Token {
+        Token::new(
             token_type,
             String::from(&self.source[self.start..self.current]),
             self.line,
-        ))
+        )
     }
-
-    fn add_token_with_bound(&mut self, token_type: TokenType, start: usize, end: usize) {
-        self.tokens.push(Token::new(
+    fn add_token_with_bound(&self, token_type: TokenType, start: usize, end: usize) -> Token {
+        Token::new(
             token_type,
             String::from(&self.source[start..end]),
             self.line,
-        ))
+        )
     }
 
     fn peek(&self) -> char {
@@ -270,12 +244,5 @@ impl Scanner {
 
     pub fn get_tokens(&self) -> &Vec<Token> {
         &self.tokens
-    }
-    pub fn get_token_types(&self) -> Vec<TokenType> {
-        let mut v: Vec<TokenType> = Vec::new();
-        for t in &self.tokens {
-            v.push(*t.get_token_type());
-        }
-        v
     }
 }
