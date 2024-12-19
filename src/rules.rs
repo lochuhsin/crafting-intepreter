@@ -3,15 +3,16 @@ use crate::tokens::TokenType;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Precedence {
     PrecNone = 0,
-    PrecAssignment = 1,
-    PrecOr = 2,
-    PrecAnd = 3,
-    PrecComparision = 4,
-    PrecTerm = 5,
-    PrecFactor = 6,
-    PrecUnary = 7,
-    PrecCall = 8,
-    PrecPrimary = 9,
+    PrecAssignment,
+    PrecOr,
+    PrecAnd,
+    PrecEquality,
+    PrecComparison,
+    PrecTerm,
+    PrecFactor,
+    PrecUnary,
+    PrecCall,
+    PrecPrimary,
 }
 
 impl Precedence {
@@ -21,12 +22,13 @@ impl Precedence {
             1 => Precedence::PrecAssignment,
             2 => Precedence::PrecOr,
             3 => Precedence::PrecAnd,
-            4 => Precedence::PrecComparision,
-            5 => Precedence::PrecTerm,
-            6 => Precedence::PrecFactor,
-            7 => Precedence::PrecUnary,
-            8 => Precedence::PrecCall,
-            9 => Precedence::PrecPrimary,
+            4 => Precedence::PrecEquality,
+            5 => Precedence::PrecComparison,
+            6 => Precedence::PrecTerm,
+            7 => Precedence::PrecFactor,
+            8 => Precedence::PrecUnary,
+            9 => Precedence::PrecCall,
+            10 => Precedence::PrecPrimary,
             _ => panic!("Invalid Precedence"),
         }
     }
@@ -34,6 +36,7 @@ impl Precedence {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseFn {
+    Literal,
     Number,
     Unary,
     Binary,
@@ -106,14 +109,14 @@ impl ParseRule {
                 precedence: Precedence::PrecFactor,
             }),
             TokenType::Bang => Some(ParseRule {
-                prefix: ParseFn::Null,
+                prefix: ParseFn::Unary,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
             }),
             TokenType::BangEqual => Some(ParseRule {
                 prefix: ParseFn::Null,
-                infix: ParseFn::Null,
-                precedence: Precedence::PrecNone,
+                infix: ParseFn::Binary,
+                precedence: Precedence::PrecEquality,
             }),
             TokenType::Equal => Some(ParseRule {
                 prefix: ParseFn::Null,
@@ -122,28 +125,28 @@ impl ParseRule {
             }),
             TokenType::EqualEqual => Some(ParseRule {
                 prefix: ParseFn::Null,
-                infix: ParseFn::Null,
-                precedence: Precedence::PrecNone,
+                infix: ParseFn::Binary,
+                precedence: Precedence::PrecEquality,
             }),
             TokenType::Greater => Some(ParseRule {
                 prefix: ParseFn::Null,
-                infix: ParseFn::Null,
-                precedence: Precedence::PrecNone,
+                infix: ParseFn::Binary,
+                precedence: Precedence::PrecComparison,
             }),
             TokenType::GreaterEqual => Some(ParseRule {
                 prefix: ParseFn::Null,
-                infix: ParseFn::Null,
-                precedence: Precedence::PrecNone,
+                infix: ParseFn::Binary,
+                precedence: Precedence::PrecComparison,
             }),
             TokenType::Less => Some(ParseRule {
                 prefix: ParseFn::Null,
-                infix: ParseFn::Null,
-                precedence: Precedence::PrecNone,
+                infix: ParseFn::Binary,
+                precedence: Precedence::PrecComparison,
             }),
             TokenType::LessEqual => Some(ParseRule {
                 prefix: ParseFn::Null,
-                infix: ParseFn::Null,
-                precedence: Precedence::PrecNone,
+                infix: ParseFn::Binary,
+                precedence: Precedence::PrecComparison,
             }),
             TokenType::Identifier => Some(ParseRule {
                 prefix: ParseFn::Null,
@@ -177,7 +180,7 @@ impl ParseRule {
                 precedence: Precedence::PrecNone,
             }),
             TokenType::False => Some(ParseRule {
-                prefix: ParseFn::Null,
+                prefix: ParseFn::Literal,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
             }),
@@ -197,7 +200,7 @@ impl ParseRule {
                 precedence: Precedence::PrecNone,
             }),
             TokenType::Nil => Some(ParseRule {
-                prefix: ParseFn::Null,
+                prefix: ParseFn::Literal,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
             }),
@@ -227,7 +230,7 @@ impl ParseRule {
                 precedence: Precedence::PrecNone,
             }),
             TokenType::True => Some(ParseRule {
-                prefix: ParseFn::Null,
+                prefix: ParseFn::Literal,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
             }),

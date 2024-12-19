@@ -4,7 +4,7 @@ use crate::errors::error;
 use crate::rules::{ParseFn, ParseRule, Precedence};
 use crate::scanner::Scanner;
 use crate::tokens::{Token, TokenType};
-use crate::values::Value;
+use crate::values::GenericValue;
 use crate::vm::disassemble_chunk;
 
 /*
@@ -78,8 +78,8 @@ fn error_at(token: &Token, msg: &str) {
 
 fn number(previous_token: Option<Token>, chunk: &mut Chunk) {
     let token: &Token = previous_token.as_ref().unwrap();
-    let value: f64 = token.get_lexeme().parse::<Value>().unwrap();
-
+    let num = token.get_lexeme().parse::<f64>().unwrap();
+    let value = GenericValue::from_number(num);
     emit_constant(token.get_line(), value, chunk);
 }
 
@@ -100,11 +100,32 @@ fn binary(
         Precedence::from_usize(rule.precedence as usize + 1),
         chunk,
     );
+    let line = token.get_line();
     match op {
-        TokenType::Plus => emit_byte(chunk, OpCode::OpAdd as usize, token.get_line()),
-        TokenType::Minus => emit_byte(chunk, OpCode::OpSubtract as usize, token.get_line()),
-        TokenType::Star => emit_byte(chunk, OpCode::OpMultiply as usize, token.get_line()),
-        TokenType::Slash => emit_byte(chunk, OpCode::OpDivide as usize, token.get_line()),
+        TokenType::Plus => emit_byte(chunk, OpCode::OpAdd as usize, line),
+        TokenType::Minus => emit_byte(chunk, OpCode::OpSubtract as usize, line),
+        TokenType::Star => emit_byte(chunk, OpCode::OpMultiply as usize, line),
+        TokenType::Slash => emit_byte(chunk, OpCode::OpDivide as usize, line),
+        TokenType::EqualEqual => emit_byte(chunk, OpCode::OpEqual as usize, line),
+
+        // Implement the below >=, <=, != using one opcode, since it is faster
+        TokenType::BangEqual => emit_bytes(
+            chunk,
+            OpCode::OpEqual as usize,
+            OpCode::OpNot as usize,
+            line,
+        ),
+        TokenType::Greater => emit_byte(chunk, OpCode::OpGreater as usize, line),
+        TokenType::GreaterEqual => {
+            emit_bytes(chunk, OpCode::OpLess as usize, OpCode::OpNot as usize, line)
+        }
+        TokenType::Less => emit_byte(chunk, OpCode::OpLess as usize, line),
+        TokenType::LessEqual => emit_bytes(
+            chunk,
+            OpCode::OpGreater as usize,
+            OpCode::OpNot as usize,
+            line,
+        ),
         _ => (), // unreachable
     }
 }
@@ -128,7 +149,20 @@ fn unary(
         TokenType::Minus => {
             emit_byte(chunk, OpCode::OpNegate as usize, token.get_line());
         }
+        TokenType::Bang => {
+            emit_byte(chunk, OpCode::OpNot as usize, token.get_line());
+        }
         _ => (), // will add a lot
+    }
+}
+
+fn literal(previous_token: Option<Token>, chunk: &mut Chunk) {
+    let token = previous_token.as_ref().unwrap();
+    match *token.get_token_type() {
+        TokenType::False => emit_byte(chunk, OpCode::OpFalse as usize, token.get_line()),
+        TokenType::Nil => emit_byte(chunk, OpCode::OpNil as usize, token.get_line()),
+        TokenType::True => emit_byte(chunk, OpCode::OpTrue as usize, token.get_line()),
+        _ => (), // unreachable
     }
 }
 
@@ -189,6 +223,7 @@ fn parse_precedence(
 fn execute_parsfn(parser: &mut Parser, parsfn: ParseFn, scanner: &mut Scanner, chunk: &mut Chunk) {
     let token = parser.previous.clone();
     match parsfn {
+        ParseFn::Literal => literal(token, chunk),
         ParseFn::Number => number(token, chunk),
         ParseFn::Unary => unary(parser, scanner, token, chunk),
         ParseFn::Binary => binary(parser, scanner, token, chunk),
@@ -201,7 +236,7 @@ fn emit_byte(chunk: &mut Chunk, byte: usize, previous_line: usize) {
     chunk.write_chunk(byte, previous_line);
 }
 
-fn emit_bytes(previous_line: usize, byte1: usize, byte2: usize, chunk: &mut Chunk) {
+fn emit_bytes(chunk: &mut Chunk, byte1: usize, byte2: usize, previous_line: usize) {
     emit_byte(chunk, byte1, previous_line);
     emit_byte(chunk, byte2, previous_line);
 }
@@ -214,16 +249,16 @@ fn end_compiler(chunk: &mut Chunk, previous_line: usize, has_error: bool) {
     emit_byte(chunk, OpCode::OpReturn as usize, previous_line);
 }
 
-fn emit_constant(previous_line: usize, value: Value, chunk: &mut Chunk) {
+fn emit_constant(previous_line: usize, value: GenericValue, chunk: &mut Chunk) {
     let cont_operl = make_constant(value, chunk);
     emit_bytes(
-        previous_line,
+        chunk,
         OpCode::OpConstant as usize,
         cont_operl,
-        chunk,
+        previous_line,
     );
 }
 
-fn make_constant(value: Value, chunk: &mut Chunk) -> usize {
+fn make_constant(value: GenericValue, chunk: &mut Chunk) -> usize {
     chunk.add_const(value)
 }
