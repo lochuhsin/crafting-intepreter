@@ -3,7 +3,6 @@ use crate::tokens::{Token, TokenType};
 #[derive(Default)]
 pub struct Scanner {
     source: String,
-    tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: usize,
@@ -13,7 +12,6 @@ impl Scanner {
     pub fn new(source: String) -> Scanner {
         Scanner {
             source,
-            tokens: Vec::new(),
             start: 0,
             current: 0,
             line: 1,
@@ -83,7 +81,7 @@ impl Scanner {
                     self.advance();
                 }
                 if self.is_at_end() {
-                    error(self.line, String::from("Unterminated string literal"));
+                    error(self.line, "Unterminated string literal");
                     TokenType::ParseError
                 } else {
                     self.advance(); // closing string
@@ -240,9 +238,5 @@ impl Scanner {
         let output = self.source.as_bytes()[self.current] as char;
         self.current += 1;
         output
-    }
-
-    pub fn get_tokens(&self) -> &Vec<Token> {
-        &self.tokens
     }
 }

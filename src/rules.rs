@@ -32,6 +32,7 @@ impl Precedence {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseFn {
     Number,
     Unary,

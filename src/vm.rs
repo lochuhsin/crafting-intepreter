@@ -31,16 +31,7 @@ impl VirtualMachine {
     }
 }
 
-pub fn interpret(s: String) -> InterpretResult {
-    let mut chunk = Chunk::default();
-    if !compile(s, &mut chunk) {
-        return InterpretResult::InterpretCompileError;
-    };
-    let mut vm = VirtualMachine::new(chunk.clone());
-    run(&mut vm)
-}
-
-fn run(vm: &mut VirtualMachine) -> InterpretResult {
+pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
     loop {
         #[cfg(debug_assertions)]
         {

@@ -1,9 +1,8 @@
 use clap::Parser;
 use core::panic;
 use lolang::chunk::Chunk;
-use lolang::scanner::Scanner;
-use lolang::vm::interpret;
-use lolang::vm::InterpretResult;
+use lolang::compiler::compile;
+use lolang::vm::{run, InterpretResult, VirtualMachine};
 use std::fs::File;
 use std::io::{stdout, Read, Write};
 use std::path::PathBuf;
@@ -25,6 +24,15 @@ fn trim_end(s: &mut String) {
             s.pop();
         }
     }
+}
+
+pub fn interpret(s: String) -> InterpretResult {
+    let mut chunk = Chunk::default();
+    if !compile(s, &mut chunk) {
+        return InterpretResult::InterpretCompileError;
+    };
+    let mut vm = VirtualMachine::new(chunk.clone());
+    run(&mut vm)
 }
 
 fn run_prompt() {

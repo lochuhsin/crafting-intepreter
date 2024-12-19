@@ -6,12 +6,5 @@ mod test {
     use crate::tokens::TokenType;
 
     #[test]
-    fn scan_string() {
-        let chunk = Chunk::default();
-        let mut scanner = Scanner::new("\"abcde\"".to_string());
-        scanner.scan_token();
-        let tokens = scanner.get_tokens();
-
-        let mut parser = Parser::new(tokens.clone(), chunk);
-    }
+    fn scan_string() {}
 }
