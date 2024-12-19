@@ -4,7 +4,12 @@ use crate::errors::error;
 use crate::rules::{ParseFn, ParseRule, Precedence};
 use crate::scanner::Scanner;
 use crate::tokens::{Token, TokenType};
-use crate::value::Value;
+use crate::values::Value;
+use crate::vm::disassemble_chunk;
+
+/*
+ * TODO: Add ternary operator support
+ */
 
 pub fn compile(s: String, chunk: &mut Chunk) -> bool {
     let mut scanner = Scanner::new(s);
@@ -12,7 +17,7 @@ pub fn compile(s: String, chunk: &mut Chunk) -> bool {
     parser.advance(&mut scanner);
     expression(&mut parser, &mut scanner, chunk);
     parser.consume(TokenType::EOF, &mut scanner, "Expect end of expression");
-    end_compiler(chunk, parser.previous.unwrap().get_line());
+    end_compiler(chunk, parser.previous.unwrap().get_line(), parser.had_error);
     !parser.had_error
 }
 #[derive(Default)]
@@ -84,11 +89,13 @@ fn binary(
     previous_token: Option<Token>,
     chunk: &mut Chunk,
 ) {
+    let cloned_previous = previous_token.clone();
     let token = previous_token.as_ref().unwrap();
     let op = token.get_token_type();
     let rule = ParseRule::get_rule(*op).unwrap();
     parse_precedence(
         parser,
+        cloned_previous,
         scanner,
         Precedence::from_usize(rule.precedence as usize + 1),
         chunk,
@@ -108,9 +115,11 @@ fn unary(
     previous_token: Option<Token>,
     chunk: &mut Chunk,
 ) {
+    let cloned = previous_token.clone();
     let token = previous_token.as_ref().unwrap();
     let op = token.get_token_type();
-    parse_precedence(parser, scanner, Precedence::PrecUnary, chunk);
+
+    parse_precedence(parser, cloned, scanner, Precedence::PrecUnary, chunk);
     // self.parse_precedence(Precedence::PrecUnary);
     // Compile the operand
     expression(parser, scanner, chunk);
@@ -133,11 +142,19 @@ fn grouping(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
 }
 
 fn expression(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
-    parse_precedence(parser, scanner, Precedence::PrecAssignment, chunk);
+    let previous_token = parser.previous.clone();
+    parse_precedence(
+        parser,
+        previous_token,
+        scanner,
+        Precedence::PrecAssignment,
+        chunk,
+    );
 }
 
 fn parse_precedence(
     parser: &mut Parser,
+    previous_token: Option<Token>,
     scanner: &mut Scanner,
     precedence: Precedence,
     chunk: &mut Chunk,
@@ -145,7 +162,7 @@ fn parse_precedence(
     parser.advance(scanner);
 
     // NOTE: Handle this parser if previous is None
-    let token = parser.previous.as_ref().unwrap();
+    let token = previous_token.as_ref().unwrap();
     let previous_type = token.get_token_type();
 
     let rule = ParseRule::get_rule(*previous_type).unwrap();
@@ -156,13 +173,16 @@ fn parse_precedence(
     // this is prefixRule() in the book, since I'm not sure how to store function pointers at this moment
     execute_parsfn(parser, prefix_rule, scanner, chunk);
 
-    let curr_token = parser.current.as_ref().unwrap();
-    let current_rule = ParseRule::get_rule(*curr_token.get_token_type()).unwrap();
-
-    while precedence as usize <= current_rule.precedence as usize {
-        parser.advance(scanner);
-        let infix_rule = ParseRule::get_rule(*previous_type).unwrap().infix;
-        execute_parsfn(parser, infix_rule, scanner, chunk);
+    loop {
+        let curr_token = parser.current.as_mut().unwrap();
+        let rule = ParseRule::get_rule(*curr_token.get_token_type()).unwrap();
+        if precedence as usize <= rule.precedence as usize {
+            parser.advance(scanner);
+            let infix_rule = ParseRule::get_rule(*previous_type).unwrap().infix;
+            execute_parsfn(parser, infix_rule, scanner, chunk);
+        } else {
+            break;
+        }
     }
 }
 
@@ -186,7 +206,11 @@ fn emit_bytes(previous_line: usize, byte1: usize, byte2: usize, chunk: &mut Chun
     emit_byte(chunk, byte2, previous_line);
 }
 
-fn end_compiler(chunk: &mut Chunk, previous_line: usize) {
+fn end_compiler(chunk: &mut Chunk, previous_line: usize, has_error: bool) {
+    #[cfg(debug_assertions)]
+    {
+        disassemble_chunk(chunk, "code");
+    }
     emit_byte(chunk, OpCode::OpReturn as usize, previous_line);
 }
 

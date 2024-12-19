@@ -7,5 +7,5 @@ pub mod rules;
 pub mod scanner;
 mod scanner_test;
 pub mod tokens;
-pub mod value;
+pub mod values;
 pub mod vm;

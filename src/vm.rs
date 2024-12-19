@@ -2,7 +2,7 @@ use crate::chunk::Chunk;
 use crate::chunk::OpCode;
 use crate::compiler::compile;
 use crate::constants;
-use crate::value::Value;
+use crate::values::Value;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InterpretResult {
