@@ -3,25 +3,6 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::vm::RuntimeError;
 
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct ValueArray {
-    pub values: Vec<GenericValue>,
-    pub count: usize,
-}
-
-impl ValueArray {
-    pub fn new(values: Vec<GenericValue>) -> ValueArray {
-        ValueArray {
-            count: values.len(),
-            values,
-        }
-    }
-    pub fn write_value_array(&mut self, value: GenericValue) {
-        self.values.push(value);
-        self.count += 1;
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GenericValueType {
     Bool(bool),
@@ -161,5 +142,24 @@ impl Neg for GenericValue {
                 self.get_type_as_str().to_string(),
             )),
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct ValueArray {
+    pub values: Vec<GenericValue>,
+    pub count: usize,
+}
+
+impl ValueArray {
+    pub fn new(values: Vec<GenericValue>) -> ValueArray {
+        ValueArray {
+            count: values.len(),
+            values,
+        }
+    }
+    pub fn write_value_array(&mut self, value: GenericValue) {
+        self.values.push(value);
+        self.count += 1;
     }
 }
