@@ -2,20 +2,35 @@ use std::fmt::{Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::vm::RuntimeError;
+#[derive(Clone, Debug, PartialEq)]
+pub enum ObjectType {
+    StrObject(String),
+}
+impl ObjectType {
+    fn get_type_as_string(&self) -> &str {
+        match self {
+            ObjectType::StrObject(v) => v,
+        }
+    }
+}
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+pub type GenericObject = ObjectType;
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum GenericValueType {
     Bool(bool),
     Number(f64),
+    Object(GenericObject),
     Nil,
 }
 
 impl GenericValueType {
-    fn get_type_as_str(&self) -> &str {
+    fn get_type_as_str(&self) -> String {
         match self {
-            GenericValueType::Bool(_) => "bool",
-            GenericValueType::Number(_) => "number",
-            GenericValueType::Nil => "nil",
+            GenericValueType::Bool(_) => String::from("bool"),
+            GenericValueType::Number(_) => String::from("number"),
+            GenericValueType::Nil => String::from("nil"),
+            GenericValueType::Object(o) => format!("object {}", o.get_type_as_string()),
         }
     }
 }
@@ -32,6 +47,9 @@ impl GenericValue {
     pub fn from_none() -> GenericValue {
         GenericValue::Nil
     }
+    pub fn from_string(value: String) -> GenericValue {
+        GenericValue::Object(ObjectType::StrObject(value))
+    }
 }
 
 impl Display for GenericValue {
@@ -40,6 +58,9 @@ impl Display for GenericValue {
             GenericValueType::Bool(v) => write!(f, "{}", v),
             GenericValueType::Number(v) => write!(f, "{}", v),
             GenericValueType::Nil => write!(f, "nil"),
+            GenericValueType::Object(v) => match v {
+                ObjectType::StrObject(v) => write!(f, "String<Object>: {}", v),
+            },
         }
     }
 }
@@ -60,6 +81,22 @@ impl GenericValue {
             None
         }
     }
+
+    pub fn as_string(&self) -> Option<String> {
+        if let GenericValueType::Object(ObjectType::StrObject(v)) = self {
+            Some(v.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn as_object(&self) -> Option<GenericObject> {
+        if let GenericValueType::Object(o) = self {
+            Some(o.clone())
+        } else {
+            None
+        }
+    }
 }
 
 impl Add for GenericValue {
@@ -69,9 +106,13 @@ impl Add for GenericValue {
             (GenericValueType::Number(lhs), GenericValueType::Number(rhs)) => {
                 Ok(GenericValueType::Number(lhs + rhs))
             }
+            (
+                GenericValueType::Object(ObjectType::StrObject(s1)),
+                GenericValueType::Object(ObjectType::StrObject(s2)),
+            ) => Ok(GenericValue::from_string(s1.to_owned() + s2)),
             _ => Err(RuntimeError::UnsupportedOperation(
-                self.get_type_as_str().to_string(),
-                other.get_type_as_str().to_string(),
+                self.get_type_as_str(),
+                other.get_type_as_str(),
             )),
         }
     }
@@ -86,8 +127,8 @@ impl Sub for GenericValue {
                 Ok(GenericValueType::Number(lhs - rhs))
             }
             _ => Err(RuntimeError::UnsupportedOperation(
-                self.get_type_as_str().to_string(),
-                other.get_type_as_str().to_string(),
+                self.get_type_as_str(),
+                other.get_type_as_str(),
             )),
         }
     }
@@ -102,8 +143,8 @@ impl Mul for GenericValue {
                 Ok(GenericValueType::Number(lhs * rhs))
             }
             _ => Err(RuntimeError::UnsupportedOperation(
-                self.get_type_as_str().to_string(),
-                other.get_type_as_str().to_string(),
+                self.get_type_as_str(),
+                other.get_type_as_str(),
             )),
         }
     }
@@ -124,8 +165,8 @@ impl Div for GenericValue {
                 }
             }
             _ => Err(RuntimeError::UnsupportedOperation(
-                self.get_type_as_str().to_string(),
-                other.get_type_as_str().to_string(),
+                self.get_type_as_str(),
+                other.get_type_as_str(),
             )),
         }
     }
@@ -138,8 +179,8 @@ impl Neg for GenericValue {
         match self {
             GenericValue::Number(value) => Ok(GenericValue::Number(-value)),
             _ => Err(RuntimeError::UnsupportedOperation(
-                self.get_type_as_str().to_string(),
-                self.get_type_as_str().to_string(),
+                self.get_type_as_str(),
+                self.get_type_as_str(),
             )),
         }
     }

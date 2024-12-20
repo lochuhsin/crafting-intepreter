@@ -3,6 +3,7 @@ use crate::constants;
 use crate::errors::runtime_error;
 use crate::values::GenericValue;
 use crate::values::GenericValueType;
+use crate::values::ObjectType;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -203,6 +204,10 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                         (GenericValueType::Nil, GenericValueType::Nil) => true,
                         (GenericValueType::Bool(b1), GenericValueType::Bool(b2)) => (*b1) == (*b2),
                         (GenericValueType::Number(n1), GenericValueType::Number(n2)) => n1 == n2,
+                        (
+                            GenericValueType::Object(ObjectType::StrObject(s1)),
+                            GenericValueType::Object(ObjectType::StrObject(s2)),
+                        ) => s1 == s2,
                         _ => false,
                     }
                 }
@@ -263,7 +268,7 @@ fn read_op(vm: &mut VirtualMachine) -> OpCode {
 
 fn read_constant(vm: &mut VirtualMachine) -> GenericValue {
     let code = read_op_raw(vm);
-    vm.chunk.const_pool.values[code]
+    vm.chunk.const_pool.values[code].clone()
 }
 
 ////////////////////////////////////////////////////////////////
@@ -312,14 +317,14 @@ pub fn simple_instruction(op: OpCode, offset: usize) -> usize {
 
 pub fn constant_instruction(op: OpCode, offset: usize, chunk: &Chunk) -> usize {
     let constant = chunk.bytecode[offset + 1];
-    let val = chunk.const_pool.values[constant];
+    let val = chunk.const_pool.values[constant].clone();
 
     println!("{}{}'{}'", op, " ".repeat(15), val);
     offset + 2
 }
 
 pub struct VirtualMachineStack {
-    pub values: [GenericValue; constants::STACK_MAX as usize],
+    pub values: Vec<GenericValue>,
     pub top: usize,
 }
 
@@ -337,7 +342,7 @@ impl VirtualMachineStack {
             panic!("Invalid operation, empty stack ")
         }
         self.top -= 1;
-        self.values[self.top]
+        self.values[self.top].clone()
     }
 
     pub fn peek(&mut self, distance: usize) -> GenericValue {
@@ -348,7 +353,7 @@ impl VirtualMachineStack {
         if self.top == 0 {
             panic!("Invalid operation, empty stack ")
         }
-        self.values[self.top - 1 - distance]
+        self.values[self.top - 1 - distance].clone()
     }
 
     // Special optimization for OP_NEGATE
@@ -356,7 +361,7 @@ impl VirtualMachineStack {
         if self.top == 0 {
             panic!("Invalid operation, empty stack ")
         }
-        let v = -self.values[self.top - 1];
+        let v = -self.values[self.top - 1].clone();
         match v {
             // TODO: put the actual line, not 0
             Ok(v) => self.values[self.top - 1] = v,
@@ -367,8 +372,10 @@ impl VirtualMachineStack {
 
 impl Default for VirtualMachineStack {
     fn default() -> Self {
+        let values = Vec::<GenericValue>::with_capacity(constants::STACK_MAX as usize);
+
         VirtualMachineStack {
-            values: [GenericValue::Nil; constants::STACK_MAX as usize], // Initialize as nil
+            values, // Initialize as nil
             top: 0,
         }
     }

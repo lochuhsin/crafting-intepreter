@@ -76,6 +76,15 @@ fn error_at(token: &Token, msg: &str) {
     println!(": {}", msg);
 }
 
+fn string(previous_token: Option<Token>, chunk: &mut Chunk) {
+    let token = previous_token.as_ref().unwrap();
+    emit_constant(
+        token.get_line(),
+        GenericValue::from_string(token.get_lexeme()),
+        chunk,
+    );
+}
+
 fn number(previous_token: Option<Token>, chunk: &mut Chunk) {
     let token: &Token = previous_token.as_ref().unwrap();
     let num = token.get_lexeme().parse::<f64>().unwrap();
@@ -221,13 +230,14 @@ fn parse_precedence(
 }
 
 fn execute_parsfn(parser: &mut Parser, parsfn: ParseFn, scanner: &mut Scanner, chunk: &mut Chunk) {
-    let token = parser.previous.clone();
+    let token: Option<Token> = parser.previous.clone();
     match parsfn {
         ParseFn::Literal => literal(token, chunk),
         ParseFn::Number => number(token, chunk),
         ParseFn::Unary => unary(parser, scanner, token, chunk),
         ParseFn::Binary => binary(parser, scanner, token, chunk),
         ParseFn::Grouping => grouping(parser, scanner, chunk),
+        ParseFn::String => string(token, chunk),
         ParseFn::Null => (),
     }
 }

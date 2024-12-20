@@ -36,6 +36,7 @@ impl Precedence {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseFn {
+    String,
     Literal,
     Number,
     Unary,
@@ -154,7 +155,7 @@ impl ParseRule {
                 precedence: Precedence::PrecNone,
             }),
             TokenType::String => Some(ParseRule {
-                prefix: ParseFn::Null,
+                prefix: ParseFn::String,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
             }),
