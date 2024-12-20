@@ -1,11 +1,11 @@
 use crate::chunk::Chunk;
-use crate::chunk::OpCode;
 use crate::errors::error;
 use crate::rules::{ParseFn, ParseRule, Precedence};
 use crate::scanner::Scanner;
 use crate::tokens::{Token, TokenType};
 use crate::values::GenericValue;
 use crate::vm::disassemble_chunk;
+use crate::vm::OpCode;
 
 /*
  * TODO: Add ternary operator support
