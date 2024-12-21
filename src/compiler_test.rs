@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod test {
     use crate::chunk::Chunk;
-    use crate::compiler::Parser;
-    use crate::scanner::Scanner;
-    use crate::tokens::TokenType;
+    use crate::compiler::compile;
+    use crate::vm::disassemble_chunk;
 
     #[test]
-    fn scan_string() {}
+    fn compile_string() {
+        let str = String::from("\"abcde\"");
+        let mut chunk = Chunk::default();
+        compile(str, &mut chunk);
+        disassemble_chunk(&chunk, "scan string");
+    }
 }

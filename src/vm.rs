@@ -3,7 +3,6 @@ use crate::constants;
 use crate::errors::runtime_error;
 use crate::values::GenericValue;
 use crate::values::GenericValueType;
-use crate::values::ObjectType;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -197,22 +196,7 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
             OpCode::OpEqual => {
                 let v1 = vm.vm_stack.pop();
                 let v2 = vm.vm_stack.pop();
-
-                // TODO: move this to value, operator overloading (trait ~~~)
-                fn is_equal(v1: &GenericValue, v2: &GenericValue) -> bool {
-                    match (v1, v2) {
-                        (GenericValueType::Nil, GenericValueType::Nil) => true,
-                        (GenericValueType::Bool(b1), GenericValueType::Bool(b2)) => (*b1) == (*b2),
-                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => n1 == n2,
-                        (
-                            GenericValueType::Object(ObjectType::StrObject(s1)),
-                            GenericValueType::Object(ObjectType::StrObject(s2)),
-                        ) => s1 == s2,
-                        _ => false,
-                    }
-                }
-
-                vm.vm_stack.push(GenericValueType::Bool(is_equal(&v1, &v2)))
+                vm.vm_stack.push(GenericValue::from_bool(v1 == v2))
             }
             OpCode::OpGreater => {
                 let v1 = vm.vm_stack.pop();
@@ -229,7 +213,7 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                 }
                 match is_greater(v1, v2) {
                     Err(e) => runtime_error(0, e.to_string().as_str()),
-                    Ok(v) => vm.vm_stack.push(GenericValueType::Bool(v)),
+                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
                 }
             }
             OpCode::OpLess => {
@@ -247,7 +231,7 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                 }
                 match is_less(v1, v2) {
                     Err(e) => runtime_error(0, e.to_string().as_str()),
-                    Ok(v) => vm.vm_stack.push(GenericValueType::Bool(v)),
+                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
                 }
             }
         };

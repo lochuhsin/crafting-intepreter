@@ -1,5 +1,6 @@
 use crate::chunk::Chunk;
 use crate::errors::error;
+use crate::parser::Parser;
 use crate::rules::{ParseFn, ParseRule, Precedence};
 use crate::scanner::Scanner;
 use crate::tokens::{Token, TokenType};
@@ -19,61 +20,6 @@ pub fn compile(s: String, chunk: &mut Chunk) -> bool {
     parser.consume(TokenType::EOF, &mut scanner, "Expect end of expression");
     end_compiler(chunk, parser.previous.unwrap().get_line(), parser.had_error);
     !parser.had_error
-}
-#[derive(Default)]
-pub struct Parser {
-    pub current: Option<Token>,
-    pub previous: Option<Token>,
-    had_error: bool,
-    panic_mode: bool,
-}
-
-impl Parser {
-    pub fn new() -> Parser {
-        Parser {
-            current: None,
-            previous: None,
-            had_error: false,
-            panic_mode: false,
-        }
-    }
-
-    pub fn advance(&mut self, scanner: &mut Scanner) {
-        self.previous = self.current.clone();
-
-        loop {
-            let token = scanner.scan_token();
-            let token_type = *token.get_token_type();
-            self.current = Some(token.clone()); // this is slow
-            if token_type != TokenType::ParseError {
-                break;
-            }
-            self.panic_mode = true;
-            error_at(&token, &token.get_lexeme());
-        }
-    }
-    pub fn consume(&mut self, token_type: TokenType, scanner: &mut Scanner, msg: &str) {
-        if let Some(token) = self.current.clone() {
-            if token.get_token_type() == &token_type {
-                self.advance(scanner);
-            } else {
-                error_at(&token, msg);
-            }
-        } else {
-            panic!("self.current is None .... figure out why")
-        }
-    }
-}
-
-fn error_at(token: &Token, msg: &str) {
-    print!("[line {}] Error", token.get_line());
-    if token.get_token_type() == &TokenType::EOF {
-        print!(" at end")
-    } else if token.get_token_type() == &TokenType::ParseError {
-    } else {
-        print!(" at {}", token.get_lexeme())
-    }
-    println!(": {}", msg);
 }
 
 fn string(previous_token: Option<Token>, chunk: &mut Chunk) {
@@ -98,13 +44,11 @@ fn binary(
     previous_token: Option<Token>,
     chunk: &mut Chunk,
 ) {
-    let cloned_previous = previous_token.clone();
     let token = previous_token.as_ref().unwrap();
     let op = token.get_token_type();
     let rule = ParseRule::get_rule(*op).unwrap();
     parse_precedence(
         parser,
-        cloned_previous,
         scanner,
         Precedence::from_usize(rule.precedence as usize + 1),
         chunk,
@@ -145,11 +89,10 @@ fn unary(
     previous_token: Option<Token>,
     chunk: &mut Chunk,
 ) {
-    let cloned = previous_token.clone();
     let token = previous_token.as_ref().unwrap();
     let op = token.get_token_type();
 
-    parse_precedence(parser, cloned, scanner, Precedence::PrecUnary, chunk);
+    parse_precedence(parser, scanner, Precedence::PrecUnary, chunk);
     // self.parse_precedence(Precedence::PrecUnary);
     // Compile the operand
     expression(parser, scanner, chunk);
@@ -185,28 +128,19 @@ fn grouping(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
 }
 
 fn expression(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
-    let previous_token = parser.previous.clone();
-    parse_precedence(
-        parser,
-        previous_token,
-        scanner,
-        Precedence::PrecAssignment,
-        chunk,
-    );
+    parse_precedence(parser, scanner, Precedence::PrecAssignment, chunk);
 }
 
 fn parse_precedence(
     parser: &mut Parser,
-    previous_token: Option<Token>,
     scanner: &mut Scanner,
     precedence: Precedence,
     chunk: &mut Chunk,
 ) {
     parser.advance(scanner);
-
+    let token = parser.previous.clone().unwrap();
     // NOTE: Handle this parser if previous is None
-    let token = previous_token.as_ref().unwrap();
-    let previous_type = token.get_token_type();
+    let previous_type: &TokenType = token.get_token_type();
 
     let rule = ParseRule::get_rule(*previous_type).unwrap();
     let prefix_rule = rule.prefix;

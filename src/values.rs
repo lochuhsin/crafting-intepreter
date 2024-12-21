@@ -16,7 +16,7 @@ impl ObjectType {
 
 pub type GenericObject = ObjectType;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum GenericValueType {
     Bool(bool),
     Number(f64),
@@ -30,7 +30,9 @@ impl GenericValueType {
             GenericValueType::Bool(_) => String::from("bool"),
             GenericValueType::Number(_) => String::from("number"),
             GenericValueType::Nil => String::from("nil"),
-            GenericValueType::Object(o) => format!("object {}", o.get_type_as_string()),
+            GenericValueType::Object(obj) => {
+                format!("object {}", obj.get_type_as_string())
+            }
         }
     }
 }
@@ -185,6 +187,22 @@ impl Neg for GenericValue {
         }
     }
 }
+
+impl PartialEq for GenericValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (GenericValueType::Number(v1), GenericValueType::Number(v2)) => v1 == v2,
+            (GenericValueType::Bool(b1), GenericValueType::Bool(b2)) => b1 == b2,
+            (
+                GenericValueType::Object(ObjectType::StrObject(s1)),
+                GenericValueType::Object(ObjectType::StrObject(s2)),
+            ) => s1 == s2,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for GenericValue {}
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ValueArray {
