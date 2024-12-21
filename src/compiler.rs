@@ -15,10 +15,10 @@ use crate::vm::OpCode;
 pub fn compile(s: String, chunk: &mut Chunk) -> bool {
     let mut scanner = Scanner::new(s);
     let mut parser = Parser::new();
-    parser.advance(&mut scanner);
+    parser.advance(&mut scanner); // Not sure why do we need this, instead of initialize previous as None, and current is the first token ..., maybe there are reasons in the book
     expression(&mut parser, &mut scanner, chunk);
     parser.consume(TokenType::EOF, &mut scanner, "Expect end of expression");
-    end_compiler(chunk, parser.previous.unwrap().get_line(), parser.had_error);
+    end_compiler(chunk, parser.previous.unwrap().get_line());
     !parser.had_error
 }
 
@@ -33,7 +33,10 @@ fn string(previous_token: Option<Token>, chunk: &mut Chunk) {
 
 fn number(previous_token: Option<Token>, chunk: &mut Chunk) {
     let token: &Token = previous_token.as_ref().unwrap();
-    let num = token.get_lexeme().parse::<f64>().unwrap();
+    let num = token
+        .get_lexeme()
+        .parse::<f64>()
+        .expect("if a token gets in to this number state, it must be f64, fix the error");
     let value = GenericValue::from_number(num);
     emit_constant(token.get_line(), value, chunk);
 }
@@ -44,9 +47,12 @@ fn binary(
     previous_token: Option<Token>,
     chunk: &mut Chunk,
 ) {
-    let token = previous_token.as_ref().unwrap();
-    let op = token.get_token_type();
-    let rule = ParseRule::get_rule(*op).unwrap();
+    let token = previous_token
+        .as_ref()
+        .expect("<Binary>, there should be no exceptions while getting token ");
+    let op = token.get_type();
+    let rule = ParseRule::get_rule(*op)
+        .expect("<Binary>, there should be no exceptions while getting rule");
     parse_precedence(
         parser,
         scanner,
@@ -90,10 +96,9 @@ fn unary(
     chunk: &mut Chunk,
 ) {
     let token = previous_token.as_ref().unwrap();
-    let op = token.get_token_type();
+    let op = token.get_type();
 
     parse_precedence(parser, scanner, Precedence::PrecUnary, chunk);
-    // self.parse_precedence(Precedence::PrecUnary);
     // Compile the operand
     expression(parser, scanner, chunk);
 
@@ -110,7 +115,7 @@ fn unary(
 
 fn literal(previous_token: Option<Token>, chunk: &mut Chunk) {
     let token = previous_token.as_ref().unwrap();
-    match *token.get_token_type() {
+    match *token.get_type() {
         TokenType::False => emit_byte(chunk, OpCode::OpFalse as usize, token.get_line()),
         TokenType::Nil => emit_byte(chunk, OpCode::OpNil as usize, token.get_line()),
         TokenType::True => emit_byte(chunk, OpCode::OpTrue as usize, token.get_line()),
@@ -138,11 +143,15 @@ fn parse_precedence(
     chunk: &mut Chunk,
 ) {
     parser.advance(scanner);
-    let token = parser.previous.clone().unwrap();
+    let token = parser
+        .previous
+        .clone()
+        .expect("There should be no exceptions while getting the previous token");
     // NOTE: Handle this parser if previous is None
-    let previous_type: &TokenType = token.get_token_type();
+    let previous_type: &TokenType = token.get_type();
 
-    let rule = ParseRule::get_rule(*previous_type).unwrap();
+    let rule = ParseRule::get_rule(*previous_type)
+        .expect("There should be no exceptions while getting the rule with token type");
     let prefix_rule = rule.prefix;
     if prefix_rule == ParseFn::Null {
         error(token.get_line(), "Expect expression")
@@ -152,7 +161,7 @@ fn parse_precedence(
 
     loop {
         let curr_token = parser.current.as_mut().unwrap();
-        let rule = ParseRule::get_rule(*curr_token.get_token_type()).unwrap();
+        let rule = ParseRule::get_rule(*curr_token.get_type()).unwrap();
         if precedence as usize <= rule.precedence as usize {
             parser.advance(scanner);
             let infix_rule = ParseRule::get_rule(*previous_type).unwrap().infix;
@@ -185,7 +194,7 @@ fn emit_bytes(chunk: &mut Chunk, byte1: usize, byte2: usize, previous_line: usiz
     emit_byte(chunk, byte2, previous_line);
 }
 
-fn end_compiler(chunk: &mut Chunk, previous_line: usize, has_error: bool) {
+fn end_compiler(chunk: &mut Chunk, previous_line: usize) {
     #[cfg(debug_assertions)]
     {
         disassemble_chunk(chunk, "code");

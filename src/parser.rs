@@ -24,7 +24,7 @@ impl Parser {
 
         loop {
             let token = scanner.scan_token();
-            let token_type = *token.get_token_type();
+            let token_type = *token.get_type();
             self.current = Some(token.clone()); // this is slow
             if token_type != TokenType::ParseError {
                 break;
@@ -34,23 +34,24 @@ impl Parser {
         }
     }
     pub fn consume(&mut self, token_type: TokenType, scanner: &mut Scanner, msg: &str) {
-        if let Some(token) = self.current.clone() {
-            if token.get_token_type() == &token_type {
-                self.advance(scanner);
-            } else {
-                error_at(&token, msg);
-            }
+        let token = self
+            .current
+            .as_ref()
+            .expect("self.current should not be none .... figure out why");
+
+        if token.get_type() == &token_type {
+            self.advance(scanner);
         } else {
-            panic!("self.current is None .... figure out why")
+            error_at(token, msg);
         }
     }
 }
 
 fn error_at(token: &Token, msg: &str) {
     print!("[line {}] Error", token.get_line());
-    if token.get_token_type() == &TokenType::EOF {
+    if token.get_type() == &TokenType::EOF {
         print!(" at end")
-    } else if token.get_token_type() == &TokenType::ParseError {
+    } else if token.get_type() == &TokenType::ParseError {
     } else {
         print!(" at {}", token.get_lexeme())
     }

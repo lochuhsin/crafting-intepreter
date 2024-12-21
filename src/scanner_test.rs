@@ -6,7 +6,7 @@ mod test {
         let mut tokens = Vec::<TokenType>::new();
         loop {
             let t = scanner.scan_token();
-            let token_type = *t.get_token_type();
+            let token_type = *t.get_type();
             tokens.push(token_type);
             if token_type == TokenType::EOF {
                 break;
