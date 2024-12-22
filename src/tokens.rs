@@ -136,7 +136,7 @@ impl TokenType {
 
     pub fn keyword_to_token_dfa(s: &str) -> Option<TokenType> {
         /*
-        automaton finite state machine
+        automation finite state machine
          */
         match s.as_bytes()[0] {
             b'a' => TokenType::check_keyword_return(&s[1..3], "nd", TokenType::And),

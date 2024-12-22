@@ -5,7 +5,7 @@ use crate::vm::RuntimeError;
 
 #[derive(Clone, Debug)]
 pub enum Value {
-    StrValue(String),
+    Str(String),
 }
 #[derive(Clone, Debug)]
 pub struct DynamicSizeObject {
@@ -18,7 +18,7 @@ pub struct DynamicSizeObject {
 impl DynamicSizeObject {
     pub fn from_string(s: String) -> DynamicSizeObject {
         DynamicSizeObject {
-            value: Value::StrValue(s),
+            value: Value::Str(s),
             prev: None,
             next: None,
         }
@@ -29,7 +29,7 @@ impl Add for DynamicSizeObject {
     type Output = Result<DynamicSizeObject, RuntimeError>; // Should be using Result, and define an error for compiler error to handler
     fn add(self, rhs: Self) -> Self::Output {
         match (&self.value, &rhs.value) {
-            (Value::StrValue(s1), Value::StrValue(s2)) => {
+            (Value::Str(s1), Value::Str(s2)) => {
                 Ok(DynamicSizeObject::from_string(s1.to_owned() + s2))
             }
             _ => Err(RuntimeError::UnsupportedOperation(
@@ -43,7 +43,7 @@ impl Add for DynamicSizeObject {
 impl PartialEq for DynamicSizeObject {
     fn eq(&self, other: &Self) -> bool {
         match (&self.value, &other.value) {
-            (Value::StrValue(s1), Value::StrValue(s2)) => s1 == s2,
+            (Value::Str(s1), Value::Str(s2)) => s1 == s2,
             _ => false,
         }
     }
@@ -64,7 +64,7 @@ impl GenericValueType {
             GenericValueType::Number(_) => String::from("number"),
             GenericValueType::Nil => String::from("nil"),
             GenericValueType::Object(obj) => match obj.value.clone() {
-                Value::StrValue(s) => s,
+                Value::Str(s) => s,
             },
         }
     }
@@ -98,7 +98,7 @@ impl Display for GenericValue {
             GenericValueType::Number(v) => write!(f, "{}", v),
             GenericValueType::Nil => write!(f, "nil"),
             GenericValueType::Object(v) => match v.value.clone() {
-                Value::StrValue(s) => write!(f, "String<Object>: {}", s),
+                Value::Str(s) => write!(f, "String<Object>: {}", s),
             },
         }
     }
@@ -123,7 +123,7 @@ impl GenericValue {
 
     pub fn as_string(&self) -> Option<String> {
         if let GenericValueType::Object(o) = self {
-            let Value::StrValue(s) = &o.value;
+            let Value::Str(s) = &o.value;
             Some(s.clone())
         } else {
             None
