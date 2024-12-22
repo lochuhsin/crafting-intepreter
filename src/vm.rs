@@ -20,7 +20,10 @@ pub enum OpCode {
     OpNot,
     OpEqual,
     OpGreater,
-    OpLess, // Well, if we implement Greater Equal, Less Equal, it will be way faster, since there are only one instruction
+    OpLess,
+    OpLessEqual,
+    OpGreaterEqual,
+    // TODO: implement bang equal
 }
 
 impl OpCode {
@@ -40,6 +43,8 @@ impl OpCode {
             12 => OpCode::OpEqual,
             13 => OpCode::OpGreater,
             14 => OpCode::OpLess,
+            15 => OpCode::OpLessEqual,
+            16 => OpCode::OpGreaterEqual,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -62,6 +67,8 @@ impl Display for OpCode {
             OpCode::OpEqual => "OP_EQUAL_EQUAL",
             OpCode::OpGreater => "OP_GREATER",
             OpCode::OpLess => "OP_LESS",
+            OpCode::OpGreaterEqual => "OP_GREATER_EQUAL",
+            OpCode::OpLessEqual => "OP_LESS_EQUAL",
         };
         write!(f, "{}", s)
     }
@@ -223,13 +230,56 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                 // TODO: move this to value, operator overloading (trait ~~~)
                 fn is_less(v1: GenericValue, v2: GenericValue) -> Result<bool, RuntimeError> {
                     match (v1, v2) {
-                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => Ok(n1 > n2),
+                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => Ok(n1 < n2),
                         _ => Err(RuntimeError::InvalidOperation(
                             " < not supported ".to_string(),
                         )),
                     }
                 }
                 match is_less(v1, v2) {
+                    Err(e) => runtime_error(0, e.to_string().as_str()),
+                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
+                }
+            }
+            OpCode::OpGreaterEqual => {
+                let v1 = vm.vm_stack.pop();
+                let v2 = vm.vm_stack.pop();
+
+                // TODO: move this to value, operator overloading (trait ~~~)
+                fn is_greater_equal(
+                    v1: GenericValue,
+                    v2: GenericValue,
+                ) -> Result<bool, RuntimeError> {
+                    match (v1, v2) {
+                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
+                            Ok(n1 >= n2)
+                        }
+                        _ => Err(RuntimeError::InvalidOperation(
+                            " >= not supported ".to_string(),
+                        )),
+                    }
+                }
+                match is_greater_equal(v1, v2) {
+                    Err(e) => runtime_error(0, e.to_string().as_str()),
+                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
+                }
+            }
+            OpCode::OpLessEqual => {
+                let v1 = vm.vm_stack.pop();
+                let v2 = vm.vm_stack.pop();
+
+                // TODO: move this to value, operator overloading (trait ~~~)
+                fn is_less_equal(v1: GenericValue, v2: GenericValue) -> Result<bool, RuntimeError> {
+                    match (v1, v2) {
+                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
+                            Ok(n1 <= n2)
+                        }
+                        _ => Err(RuntimeError::InvalidOperation(
+                            " <= not supported ".to_string(),
+                        )),
+                    }
+                }
+                match is_less_equal(v1, v2) {
                     Err(e) => runtime_error(0, e.to_string().as_str()),
                     Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
                 }
@@ -291,6 +341,8 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         OpCode::OpEqual => simple_instruction(instruction, offset),
         OpCode::OpGreater => simple_instruction(instruction, offset),
         OpCode::OpLess => simple_instruction(instruction, offset),
+        OpCode::OpGreaterEqual => simple_instruction(instruction, offset),
+        OpCode::OpLessEqual => simple_instruction(instruction, offset),
     }
 }
 

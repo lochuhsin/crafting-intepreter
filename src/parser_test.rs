@@ -10,13 +10,6 @@ mod test {
         let mut parser = Parser::new();
         parser.advance(&mut scanner);
         let obj = parser.current.unwrap();
-        println!("{} hhh", obj);
-        println!("{} hhh", obj);
-        println!("{} hhh", obj);
-        println!("{} hhh", obj);
-        println!("{} hhh", obj);
-        println!("{} hhh", obj);
-        println!("{} hhh", obj);
-        println!("{} hhh", obj);
+        // TODO: add tests
     }
 }

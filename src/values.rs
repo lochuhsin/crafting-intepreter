@@ -148,7 +148,7 @@ impl Add for GenericValue {
             }
             (GenericValueType::Object(o1), GenericValueType::Object(o2)) => {
                 let new_o = (o1.clone() + o2.clone())?;
-                Ok(GenericValueType::from_object(new_o))
+                Ok(GenericValue::from_object(new_o))
             }
             _ => Err(RuntimeError::UnsupportedOperation(
                 self.get_type_as_str(),

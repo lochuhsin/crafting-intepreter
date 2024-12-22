@@ -75,16 +75,9 @@ fn binary(
             line,
         ),
         TokenType::Greater => emit_byte(chunk, OpCode::OpGreater as usize, line),
-        TokenType::GreaterEqual => {
-            emit_bytes(chunk, OpCode::OpLess as usize, OpCode::OpNot as usize, line)
-        }
+        TokenType::GreaterEqual => emit_byte(chunk, OpCode::OpGreaterEqual as usize, line),
         TokenType::Less => emit_byte(chunk, OpCode::OpLess as usize, line),
-        TokenType::LessEqual => emit_bytes(
-            chunk,
-            OpCode::OpGreater as usize,
-            OpCode::OpNot as usize,
-            line,
-        ),
+        TokenType::LessEqual => emit_byte(chunk, OpCode::OpLessEqual as usize, line),
         _ => (), // unreachable
     }
 }
