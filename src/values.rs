@@ -2,25 +2,58 @@ use std::fmt::{Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::vm::RuntimeError;
-#[derive(Clone, Debug, PartialEq)]
-pub enum ObjectType {
-    StrObject(String),
+
+#[derive(Clone, Debug)]
+pub enum Value {
+    StrValue(String),
 }
-impl ObjectType {
-    fn get_type_as_string(&self) -> &str {
-        match self {
-            ObjectType::StrObject(v) => v,
+#[derive(Clone, Debug)]
+pub struct DynamicSizeObject {
+    // looks like a node or something, for future gc purposes
+    value: Value,
+    prev: Option<Box<DynamicSizeObject>>, // Pure heap alloc
+    next: Option<Box<DynamicSizeObject>>,
+}
+
+impl DynamicSizeObject {
+    pub fn from_string(s: String) -> DynamicSizeObject {
+        DynamicSizeObject {
+            value: Value::StrValue(s),
+            prev: None,
+            next: None,
         }
     }
 }
 
-pub type GenericObject = ObjectType;
+impl Add for DynamicSizeObject {
+    type Output = Result<DynamicSizeObject, RuntimeError>; // Should be using Result, and define an error for compiler error to handler
+    fn add(self, rhs: Self) -> Self::Output {
+        match (&self.value, &rhs.value) {
+            (Value::StrValue(s1), Value::StrValue(s2)) => {
+                Ok(DynamicSizeObject::from_string(s1.to_owned() + s2))
+            }
+            _ => Err(RuntimeError::UnsupportedOperation(
+                String::from("Generic object type1 To be implemented"),
+                String::from("Generic object type2 To be implemented"),
+            )),
+        }
+    }
+}
+
+impl PartialEq for DynamicSizeObject {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self.value, &other.value) {
+            (Value::StrValue(s1), Value::StrValue(s2)) => s1 == s2,
+            _ => false,
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum GenericValueType {
     Bool(bool),
     Number(f64),
-    Object(GenericObject),
+    Object(DynamicSizeObject),
     Nil,
 }
 
@@ -30,9 +63,9 @@ impl GenericValueType {
             GenericValueType::Bool(_) => String::from("bool"),
             GenericValueType::Number(_) => String::from("number"),
             GenericValueType::Nil => String::from("nil"),
-            GenericValueType::Object(obj) => {
-                format!("object {}", obj.get_type_as_string())
-            }
+            GenericValueType::Object(obj) => match obj.value.clone() {
+                Value::StrValue(s) => s,
+            },
         }
     }
 }
@@ -43,14 +76,18 @@ impl GenericValue {
     pub fn from_bool(value: bool) -> GenericValue {
         GenericValue::Bool(value)
     }
-    pub fn from_number(value: f64) -> GenericValue {
+    pub fn from_f64(value: f64) -> GenericValue {
         GenericValue::Number(value)
     }
     pub fn from_none() -> GenericValue {
         GenericValue::Nil
     }
     pub fn from_string(value: String) -> GenericValue {
-        GenericValue::Object(ObjectType::StrObject(value))
+        GenericValue::Object(DynamicSizeObject::from_string(value))
+    }
+
+    pub fn from_object(value: DynamicSizeObject) -> GenericValue {
+        GenericValue::Object(value)
     }
 }
 
@@ -60,8 +97,8 @@ impl Display for GenericValue {
             GenericValueType::Bool(v) => write!(f, "{}", v),
             GenericValueType::Number(v) => write!(f, "{}", v),
             GenericValueType::Nil => write!(f, "nil"),
-            GenericValueType::Object(v) => match v {
-                ObjectType::StrObject(v) => write!(f, "String<Object>: {}", v),
+            GenericValueType::Object(v) => match v.value.clone() {
+                Value::StrValue(s) => write!(f, "String<Object>: {}", s),
             },
         }
     }
@@ -85,14 +122,15 @@ impl GenericValue {
     }
 
     pub fn as_string(&self) -> Option<String> {
-        if let GenericValueType::Object(ObjectType::StrObject(v)) = self {
-            Some(v.clone())
+        if let GenericValueType::Object(o) = self {
+            let Value::StrValue(s) = &o.value;
+            Some(s.clone())
         } else {
             None
         }
     }
 
-    pub fn as_object(&self) -> Option<GenericObject> {
+    pub fn as_object(&self) -> Option<DynamicSizeObject> {
         if let GenericValueType::Object(o) = self {
             Some(o.clone())
         } else {
@@ -106,12 +144,12 @@ impl Add for GenericValue {
     fn add(self, other: GenericValue) -> Result<Self, RuntimeError> {
         match (&self, &other) {
             (GenericValueType::Number(lhs), GenericValueType::Number(rhs)) => {
-                Ok(GenericValueType::Number(lhs + rhs))
+                Ok(GenericValue::from_f64(lhs + rhs))
             }
-            (
-                GenericValueType::Object(ObjectType::StrObject(s1)),
-                GenericValueType::Object(ObjectType::StrObject(s2)),
-            ) => Ok(GenericValue::from_string(s1.to_owned() + s2)),
+            (GenericValueType::Object(o1), GenericValueType::Object(o2)) => {
+                let new_o = (o1.clone() + o2.clone())?;
+                Ok(GenericValueType::from_object(new_o))
+            }
             _ => Err(RuntimeError::UnsupportedOperation(
                 self.get_type_as_str(),
                 other.get_type_as_str(),
@@ -126,7 +164,7 @@ impl Sub for GenericValue {
     fn sub(self, other: GenericValueType) -> Result<Self, RuntimeError> {
         match (&self, &other) {
             (GenericValueType::Number(lhs), GenericValueType::Number(rhs)) => {
-                Ok(GenericValueType::Number(lhs - rhs))
+                Ok(GenericValue::from_f64(lhs - rhs))
             }
             _ => Err(RuntimeError::UnsupportedOperation(
                 self.get_type_as_str(),
@@ -142,7 +180,7 @@ impl Mul for GenericValue {
     fn mul(self, other: GenericValueType) -> Result<Self, RuntimeError> {
         match (&self, &other) {
             (GenericValueType::Number(lhs), GenericValueType::Number(rhs)) => {
-                Ok(GenericValueType::Number(lhs * rhs))
+                Ok(GenericValue::from_f64(lhs * rhs))
             }
             _ => Err(RuntimeError::UnsupportedOperation(
                 self.get_type_as_str(),
@@ -163,7 +201,7 @@ impl Div for GenericValue {
                         "could not divide by zero".to_string(),
                     ))
                 } else {
-                    Ok(GenericValueType::Number(lhs / rhs))
+                    Ok(GenericValue::from_f64(lhs / rhs))
                 }
             }
             _ => Err(RuntimeError::UnsupportedOperation(
@@ -193,10 +231,7 @@ impl PartialEq for GenericValue {
         match (self, other) {
             (GenericValueType::Number(v1), GenericValueType::Number(v2)) => v1 == v2,
             (GenericValueType::Bool(b1), GenericValueType::Bool(b2)) => b1 == b2,
-            (
-                GenericValueType::Object(ObjectType::StrObject(s1)),
-                GenericValueType::Object(ObjectType::StrObject(s2)),
-            ) => s1 == s2,
+            (GenericValueType::Object(o1), GenericValueType::Object(o2)) => o1 == o2,
             _ => false,
         }
     }

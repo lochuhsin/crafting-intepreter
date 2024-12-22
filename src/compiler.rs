@@ -37,7 +37,7 @@ fn number(previous_token: Option<Token>, chunk: &mut Chunk) {
         .get_lexeme()
         .parse::<f64>()
         .expect("if a token gets in to this number state, it must be f64, fix the error");
-    let value = GenericValue::from_number(num);
+    let value = GenericValue::from_f64(num);
     emit_constant(token.get_line(), value, chunk);
 }
 
