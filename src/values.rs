@@ -90,6 +90,12 @@ impl GenericValue {
     }
 }
 
+impl Default for GenericValue {
+    fn default() -> Self {
+        GenericValue::Nil
+    }
+}
+
 impl Display for GenericValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

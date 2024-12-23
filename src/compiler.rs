@@ -22,13 +22,8 @@ pub fn compile(s: String, chunk: &mut Chunk) -> bool {
     let mut scanner = Scanner::new(s);
     let mut parser = Parser::new();
     parser.advance(&mut scanner); // Not sure why do we need this, instead of initialize previous as None, and current is the first token ..., maybe there are reasons in the book
-    let mut count = 0;
     while !match_token(&mut parser, &mut scanner, TokenType::EOF) {
         declaration(&mut parser, &mut scanner, chunk);
-        count += 1;
-        if count > 5 {
-            break;
-        }
     }
     end_compiler(chunk, parser.previous.unwrap().get_line());
     !parser.had_error

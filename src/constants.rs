@@ -1,1 +1,1 @@
-pub const STACK_MAX: u16 = u16::MAX; // 65532
+pub const STACK_MAX: u8 = u8::MAX; // 65532

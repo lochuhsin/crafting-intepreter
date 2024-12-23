@@ -128,7 +128,7 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
     loop {
         #[cfg(debug_assertions)]
         {
-            for i in 0..vm.vm_stack.top {
+            for i in 0..vm.vm_stack.ptr {
                 print!("[ {} ]", vm.vm_stack.values[i])
             }
             println!();
@@ -152,9 +152,12 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                 let v2 = vm.vm_stack.pop(); // Handle empty value stack
 
                 let v = v1 + v2;
+
                 match v {
                     // TODO: put the actual line, not 0
-                    Ok(v) => vm.vm_stack.push(v),
+                    Ok(v) => {
+                        vm.vm_stack.push(v);
+                    }
                     Err(e) => runtime_error(0, e.to_string().as_str()),
                 }
             }
@@ -291,7 +294,7 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                 }
             }
             OpCode::OpPrint => {
-                println!("{}", vm.vm_stack.pop())
+                println!("{}", vm.vm_stack.peek(0))
             }
         };
     }
@@ -370,25 +373,26 @@ pub fn constant_instruction(op: OpCode, offset: usize, chunk: &Chunk) -> usize {
 }
 
 pub struct VirtualMachineStack {
-    pub values: Vec<GenericValue>,
-    pub top: usize,
+    pub values: [GenericValue; constants::STACK_MAX as usize],
+    pub ptr: usize,
+    pub max_size: usize,
 }
 
 impl VirtualMachineStack {
     pub fn push(&mut self, value: GenericValue) {
-        if self.top >= self.values.len() {
+        if self.ptr == self.max_size {
             panic!("Invalid operation, exceeds stack limit")
         }
-        self.values[self.top] = value;
-        self.top += 1;
+        self.values[self.ptr] = value;
+        self.ptr += 1;
     }
 
     pub fn pop(&mut self) -> GenericValue {
-        if self.top == 0 {
-            panic!("Invalid operation, empty stack ")
+        if self.ptr == 0 {
+            panic!("[Pop] Invalid operation, empty stack")
         }
-        self.top -= 1;
-        self.values[self.top].clone()
+        self.ptr -= 1;
+        self.values[self.ptr].clone()
     }
 
     pub fn peek(&mut self, distance: usize) -> GenericValue {
@@ -396,21 +400,21 @@ impl VirtualMachineStack {
            peek value, start from the top of the stack,
            zero means the top value
         */
-        if self.top == 0 {
-            panic!("Invalid operation, empty stack ")
+        if self.ptr == 0 {
+            panic!("[Peek] Invalid operation, empty stack ")
         }
-        self.values[self.top - 1 - distance].clone()
+        self.values[self.ptr - 1 - distance].clone()
     }
 
     // Special optimization for OP_NEGATE
     pub fn negate_peek(&mut self) {
-        if self.top == 0 {
-            panic!("Invalid operation, empty stack ")
+        if self.ptr == 0 {
+            panic!("[negate_peek] Invalid operation, empty stack ")
         }
-        let v = -self.values[self.top - 1].clone();
+        let v = -self.values[self.ptr - 1].clone();
         match v {
             // TODO: put the actual line, not 0
-            Ok(v) => self.values[self.top - 1] = v,
+            Ok(v) => self.values[self.ptr - 1] = v,
             Err(e) => runtime_error(0, e.to_string().as_str()),
         }
     }
@@ -418,11 +422,10 @@ impl VirtualMachineStack {
 
 impl Default for VirtualMachineStack {
     fn default() -> Self {
-        let values = Vec::<GenericValue>::with_capacity(constants::STACK_MAX as usize);
-
         VirtualMachineStack {
-            values, // Initialize as nil
-            top: 0,
+            values: std::array::from_fn(|_| GenericValue::default()), // Initialize as nil
+            ptr: 0,
+            max_size: constants::STACK_MAX as usize,
         }
     }
 }
