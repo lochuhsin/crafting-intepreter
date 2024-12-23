@@ -30,11 +30,6 @@ pub fn compile(s: String, chunk: &mut Chunk) -> bool {
 }
 
 fn match_token(parser: &mut Parser, scanner: &mut Scanner, token_type: TokenType) -> bool {
-    println!(
-        "{} {}",
-        parser.current.as_ref().unwrap().get_lexeme(),
-        token_type.as_string(),
-    );
     if !check(&token_type, parser.current.as_ref().unwrap().get_type()) {
         false
     } else {
@@ -47,14 +42,81 @@ fn check(expect_token_type: &TokenType, current_token_type: &TokenType) -> bool 
     expect_token_type == current_token_type
 }
 
-fn declaration(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
-    statement(parser, scanner, chunk);
+pub fn declaration(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+    if match_token(parser, scanner, TokenType::Var) {
+        var_declaration(parser, scanner, chunk)
+    } else {
+        statement(parser, scanner, chunk);
+    }
+}
+
+fn var_declaration(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+    let global_var = parse_variable(parser, scanner, chunk, "Expect variable name");
+    if match_token(parser, scanner, TokenType::Equal) {
+        expression(parser, scanner, chunk);
+    } else {
+        emit_byte(
+            chunk,
+            OpCode::OpNil as usize,
+            parser
+                .previous
+                .as_ref()
+                .expect("previous token in val declaration should not be none")
+                .get_line(),
+        );
+    }
+    parser.consume(
+        TokenType::Semicolon,
+        scanner,
+        "Expect ';' after variable declaration",
+    );
+    define_variable(global_var, parser, chunk);
+}
+
+fn parse_variable(
+    parser: &mut Parser,
+    scanner: &mut Scanner,
+    chunk: &mut Chunk,
+    msg: &str,
+) -> usize {
+    parser.consume(TokenType::Identifier, scanner, msg);
+    identifier_constant(parser.previous.as_ref(), chunk)
+}
+
+fn identifier_constant(previous_token: Option<&Token>, chunk: &mut Chunk) -> usize {
+    let lexeme = previous_token.unwrap().get_lexeme();
+    make_constant(GenericValue::from_string(lexeme), chunk)
+}
+
+fn define_variable(global_var: usize, parser: &mut Parser, chunk: &mut Chunk) {
+    emit_bytes(
+        chunk,
+        OpCode::OpDefineGlobal as usize,
+        global_var,
+        parser
+            .previous
+            .as_ref()
+            .expect("[define variable] previous token should exists")
+            .get_line(),
+    );
 }
 
 fn statement(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
     if match_token(parser, scanner, TokenType::Print) {
         print_statement(parser, scanner, chunk);
+    } else {
+        expression_statement(parser, scanner, chunk)
     }
+}
+
+fn expression_statement(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+    expression(parser, scanner, chunk);
+    parser.consume(TokenType::Semicolon, scanner, "Expect ';' after expression");
+    emit_byte(
+        chunk,
+        OpCode::OpPop as usize,
+        parser.previous.as_ref().unwrap().get_line(),
+    );
 }
 
 fn print_statement(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
@@ -65,6 +127,22 @@ fn print_statement(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk
         chunk,
         OpCode::OpPrint as usize,
         parser.previous.as_ref().unwrap().get_line(),
+    );
+}
+
+fn variable(previous_token: Option<Token>, chunk: &mut Chunk) {
+    named_variable(previous_token.as_ref(), chunk);
+}
+
+fn named_variable(previous_token: Option<&Token>, chunk: &mut Chunk) {
+    let arg = identifier_constant(previous_token, chunk);
+    emit_bytes(
+        chunk,
+        OpCode::OpGetGlobal as usize,
+        arg,
+        previous_token
+            .expect("name variable token should not be empty")
+            .get_line(),
     );
 }
 
@@ -83,8 +161,7 @@ fn number(previous_token: Option<Token>, chunk: &mut Chunk) {
         .get_lexeme()
         .parse::<f64>()
         .expect("if a token gets in to this number state, it must be f64, fix the error");
-    let value = GenericValue::from_f64(num);
-    emit_constant(token.get_line(), value, chunk);
+    emit_constant(token.get_line(), GenericValue::from_f64(num), chunk);
 }
 
 fn binary(
@@ -218,7 +295,7 @@ fn parse_precedence(
 }
 
 fn execute_parsfn(parser: &mut Parser, parsfn: ParseFn, scanner: &mut Scanner, chunk: &mut Chunk) {
-    let token: Option<Token> = parser.previous.clone();
+    let token: Option<Token> = parser.previous.clone(); // don't like this
     match parsfn {
         ParseFn::Literal => literal(token, chunk),
         ParseFn::Number => number(token, chunk),
@@ -226,6 +303,7 @@ fn execute_parsfn(parser: &mut Parser, parsfn: ParseFn, scanner: &mut Scanner, c
         ParseFn::Binary => binary(parser, scanner, token, chunk),
         ParseFn::Grouping => grouping(parser, scanner, chunk),
         ParseFn::String => string(token, chunk),
+        ParseFn::Variable => variable(token, chunk),
         ParseFn::Null => (),
     }
 }

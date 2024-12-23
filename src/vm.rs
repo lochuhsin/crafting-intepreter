@@ -1,6 +1,7 @@
 use crate::chunk::Chunk;
 use crate::constants;
 use crate::errors::runtime_error;
+use crate::table;
 use crate::table::Table;
 use crate::values::GenericValue;
 use crate::values::GenericValueType;
@@ -25,7 +26,10 @@ pub enum OpCode {
     OpLessEqual,
     OpGreaterEqual,
     OpPrint,
-    // TODO: implement bang equal
+    OpPop,
+    OpDefineGlobal,
+    OpGetGlobal,
+    // TODO: implement bang equal, mod %
 }
 
 impl OpCode {
@@ -48,6 +52,9 @@ impl OpCode {
             15 => OpCode::OpLessEqual,
             16 => OpCode::OpGreaterEqual,
             17 => OpCode::OpPrint,
+            18 => OpCode::OpPop,
+            19 => OpCode::OpDefineGlobal,
+            20 => OpCode::OpGetGlobal,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -56,23 +63,26 @@ impl OpCode {
 impl Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match *self {
-            OpCode::OpReturn => "OP_RETURN",
-            OpCode::OpConstant => "OP_CONST",
-            OpCode::OpNegate => "OP_NEGATE",
-            OpCode::OpAdd => "OP_ADD",
-            OpCode::OpSubtract => "OP_SUBTRACT",
-            OpCode::OpMultiply => "OP_MULTIPLY",
-            OpCode::OpDivide => "OP_DIVIDE",
-            OpCode::OpNil => "OP_NIL",
-            OpCode::OpTrue => "OP_TRUE",
-            OpCode::OpFalse => "OP_FALSE",
-            OpCode::OpNot => "OP_NOT",
-            OpCode::OpEqual => "OP_EQUAL_EQUAL",
-            OpCode::OpGreater => "OP_GREATER",
-            OpCode::OpLess => "OP_LESS",
-            OpCode::OpGreaterEqual => "OP_GREATER_EQUAL",
-            OpCode::OpLessEqual => "OP_LESS_EQUAL",
-            OpCode::OpPrint => "OP_PRINT",
+            Self::OpReturn => "OpReturn",
+            Self::OpConstant => "OpConst",
+            Self::OpNegate => "OpNegate",
+            Self::OpAdd => "OpAdd",
+            Self::OpSubtract => "OpSubtract",
+            Self::OpMultiply => "OpMultiply",
+            Self::OpDivide => "OpDivide",
+            Self::OpNil => "OpNil",
+            Self::OpTrue => "OpTrue",
+            Self::OpFalse => "OpFalse",
+            Self::OpNot => "OpNot",
+            Self::OpEqual => "OpEqualEqual",
+            Self::OpGreater => "OpGreater",
+            Self::OpLess => "OpLess",
+            Self::OpGreaterEqual => "OpGreaterEqual",
+            Self::OpLessEqual => "OpLessEqual",
+            Self::OpPrint => "OpPrint",
+            Self::OpPop => "OpPop",
+            Self::OpDefineGlobal => "OpDefineGlobal",
+            Self::OpGetGlobal => "OpGetGlobal",
         };
         write!(f, "{}", s)
     }
@@ -137,7 +147,6 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
         let op_code = read_op(vm);
         match op_code {
             OpCode::OpReturn => {
-                println!("{}", vm.vm_stack.pop());
                 return InterpretResult::InterpretOk;
             }
             OpCode::OpConstant => {
@@ -294,10 +303,33 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                 }
             }
             OpCode::OpPrint => {
-                println!("{}", vm.vm_stack.peek(0))
+                println!("{}", vm.vm_stack.pop()) // 我手改成 peek , 書裡面寫 pop, 我在思考....
+            }
+            OpCode::OpPop => {
+                vm.vm_stack.pop();
+            }
+            OpCode::OpDefineGlobal => {
+                let name = read_string(vm);
+                vm.table.set(name.clone(), vm.vm_stack.peek(0));
+                vm.vm_stack.pop();
+            }
+            OpCode::OpGetGlobal => {
+                let name = read_string(vm);
+                if let Some(v) = vm.table.get(&name) {
+                    vm.vm_stack.push(v.clone());
+                } else {
+                    runtime_error(0, &format!("undefined global variable:{}", name));
+                    return InterpretResult::InterpretRunTimeError;
+                }
             }
         };
     }
+}
+
+fn read_string(vm: &mut VirtualMachine) -> String {
+    read_constant(vm)
+        .as_string()
+        .expect("read_string operation should always be valid")
 }
 
 fn read_op_raw(vm: &mut VirtualMachine) -> usize {
@@ -319,7 +351,7 @@ fn read_constant(vm: &mut VirtualMachine) -> GenericValue {
 
 ////////////////////////////////////////////////////////////////
 pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
-    println!("== {} ==", name);
+    println!("==     {}     ==", name);
 
     let mut offset = 0;
     while offset < chunk.count {
@@ -356,6 +388,9 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         OpCode::OpGreaterEqual => simple_instruction(instruction, offset),
         OpCode::OpLessEqual => simple_instruction(instruction, offset),
         OpCode::OpPrint => simple_instruction(instruction, offset),
+        OpCode::OpPop => simple_instruction(instruction, offset),
+        OpCode::OpDefineGlobal => constant_instruction(OpCode::OpDefineGlobal, offset, chunk),
+        OpCode::OpGetGlobal => constant_instruction(OpCode::OpGetGlobal, offset, chunk),
     }
 }
 
@@ -381,7 +416,7 @@ pub struct VirtualMachineStack {
 impl VirtualMachineStack {
     pub fn push(&mut self, value: GenericValue) {
         if self.ptr == self.max_size {
-            panic!("Invalid operation, exceeds stack limit")
+            panic!("[Push] Invalid operation, exceeds stack limit")
         }
         self.values[self.ptr] = value;
         self.ptr += 1;

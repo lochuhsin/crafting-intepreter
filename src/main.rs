@@ -27,11 +27,12 @@ fn trim_end(s: &mut String) {
 }
 
 pub fn interpret(s: String) -> InterpretResult {
+    // NOTE: Refactor the virtual machine, should stay until the prompt exists,
     let mut chunk = Chunk::default();
     if !compile(s, &mut chunk) {
         return InterpretResult::InterpretCompileError;
     };
-    let mut vm = VirtualMachine::new(chunk.clone());
+    let mut vm = VirtualMachine::new(chunk);
     run(&mut vm)
 }
 

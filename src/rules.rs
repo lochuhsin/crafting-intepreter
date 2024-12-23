@@ -42,6 +42,7 @@ pub enum ParseFn {
     Unary,
     Binary,
     Grouping,
+    Variable,
     Null,
 }
 
@@ -150,7 +151,7 @@ impl ParseRule {
                 precedence: Precedence::PrecComparison,
             },
             TokenType::Identifier => ParseRule {
-                prefix: ParseFn::Null,
+                prefix: ParseFn::Variable,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
             },

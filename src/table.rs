@@ -4,7 +4,7 @@ use crate::values::GenericValue;
 
 #[derive(Debug, Default)]
 pub struct Table {
-    container: HashMap<String, GenericValue>, // Note: Check the performance of a hash table
+    pub container: HashMap<String, GenericValue>, // Note: Check the performance of a hash table
 }
 
 impl Table {
