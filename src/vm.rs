@@ -1,6 +1,7 @@
 use crate::chunk::Chunk;
 use crate::constants;
 use crate::errors::runtime_error;
+use crate::table::Table;
 use crate::values::GenericValue;
 use crate::values::GenericValueType;
 use std::fmt::{Display, Formatter};
@@ -103,6 +104,7 @@ pub struct VirtualMachine {
     pub chunk: Chunk,
     pub ip: usize, // instruction pointer, the index currently pointing to the instruction in chunk
     pub vm_stack: VirtualMachineStack,
+    pub table: Table,
 }
 
 impl VirtualMachine {
@@ -111,6 +113,7 @@ impl VirtualMachine {
             ip: 0,
             chunk,
             vm_stack: VirtualMachineStack::default(),
+            table: Table::default(),
         }
     }
     pub fn update_chunk(&mut self, chunk: Chunk) {

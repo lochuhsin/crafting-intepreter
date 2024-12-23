@@ -11,7 +11,7 @@ pub enum Value {
 pub struct DynamicSizeObject {
     // looks like a node or something, for future gc purposes
     value: Value,
-    prev: Option<Box<DynamicSizeObject>>, // Pure heap alloc
+    prev: Option<Box<DynamicSizeObject>>, // Pure heap alloc, find a way free
     next: Option<Box<DynamicSizeObject>>,
 }
 
@@ -85,7 +85,6 @@ impl GenericValue {
     pub fn from_string(value: String) -> GenericValue {
         GenericValue::Object(DynamicSizeObject::from_string(value))
     }
-
     pub fn from_object(value: DynamicSizeObject) -> GenericValue {
         GenericValue::Object(value)
     }

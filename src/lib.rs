@@ -8,6 +8,7 @@ mod parser_test;
 pub mod rules;
 pub mod scanner;
 mod scanner_test;
+pub mod table;
 pub mod tokens;
 pub mod values;
 pub mod vm;
