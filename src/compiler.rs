@@ -9,6 +9,12 @@ use crate::vm::disassemble_chunk;
 use crate::vm::OpCode;
 
 /*
+ *
+ *
+ * declaration -> classDecl | funcDecl | varDecl | statement;
+ *
+ * statement   -> exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block
+ *
  * TODO: Add ternary operator support
  */
 
@@ -16,10 +22,55 @@ pub fn compile(s: String, chunk: &mut Chunk) -> bool {
     let mut scanner = Scanner::new(s);
     let mut parser = Parser::new();
     parser.advance(&mut scanner); // Not sure why do we need this, instead of initialize previous as None, and current is the first token ..., maybe there are reasons in the book
-    expression(&mut parser, &mut scanner, chunk);
-    parser.consume(TokenType::EOF, &mut scanner, "Expect end of expression");
+    let mut count = 0;
+    while !match_token(&mut parser, &mut scanner, TokenType::EOF) {
+        declaration(&mut parser, &mut scanner, chunk);
+        count += 1;
+        if count > 5 {
+            break;
+        }
+    }
     end_compiler(chunk, parser.previous.unwrap().get_line());
     !parser.had_error
+}
+
+fn match_token(parser: &mut Parser, scanner: &mut Scanner, token_type: TokenType) -> bool {
+    println!(
+        "{} {}",
+        parser.current.as_ref().unwrap().get_lexeme(),
+        token_type.as_string(),
+    );
+    if !check(&token_type, parser.current.as_ref().unwrap().get_type()) {
+        false
+    } else {
+        parser.advance(scanner);
+        true
+    }
+}
+
+fn check(expect_token_type: &TokenType, current_token_type: &TokenType) -> bool {
+    expect_token_type == current_token_type
+}
+
+fn declaration(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+    statement(parser, scanner, chunk);
+}
+
+fn statement(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+    if match_token(parser, scanner, TokenType::Print) {
+        print_statement(parser, scanner, chunk);
+    }
+}
+
+fn print_statement(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+    expression(parser, scanner, chunk);
+
+    parser.consume(TokenType::Semicolon, scanner, "Expect ';' after value");
+    emit_byte(
+        chunk,
+        OpCode::OpPrint as usize,
+        parser.previous.as_ref().unwrap().get_line(),
+    );
 }
 
 fn string(previous_token: Option<Token>, chunk: &mut Chunk) {
@@ -51,8 +102,7 @@ fn binary(
         .as_ref()
         .expect("<Binary>, there should be no exceptions while getting token ");
     let op = token.get_type();
-    let rule = ParseRule::get_rule(*op)
-        .expect("<Binary>, there should be no exceptions while getting rule");
+    let rule = ParseRule::get_rule(*op);
     parse_precedence(
         parser,
         scanner,
@@ -125,7 +175,7 @@ fn grouping(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
     );
 }
 
-fn expression(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+pub fn expression(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
     parse_precedence(parser, scanner, Precedence::PrecAssignment, chunk);
 }
 
@@ -142,22 +192,29 @@ fn parse_precedence(
         .expect("There should be no exceptions while getting the previous token");
     // NOTE: Handle this parser if previous is None
     let previous_type: &TokenType = token.get_type();
+    let rule = ParseRule::get_rule(*previous_type);
 
-    let rule = ParseRule::get_rule(*previous_type)
-        .expect("There should be no exceptions while getting the rule with token type");
-    let prefix_rule = rule.prefix;
-    if prefix_rule == ParseFn::Null {
+    if rule.prefix == ParseFn::Null {
         error(token.get_line(), "Expect expression")
+    } else {
+        // this is prefixRule() in the book, since I'm not sure how to store function pointers at this moment
+        execute_parsfn(parser, rule.prefix, scanner, chunk);
     }
-    // this is prefixRule() in the book, since I'm not sure how to store function pointers at this moment
-    execute_parsfn(parser, prefix_rule, scanner, chunk);
 
     loop {
         let curr_token = parser.current.as_mut().unwrap();
-        let rule = ParseRule::get_rule(*curr_token.get_type()).unwrap();
+        let rule = ParseRule::get_rule(*curr_token.get_type());
         if precedence as usize <= rule.precedence as usize {
             parser.advance(scanner);
-            let infix_rule = ParseRule::get_rule(*previous_type).unwrap().infix;
+
+            let infix_rule = ParseRule::get_rule(
+                *parser
+                    .previous
+                    .as_ref()
+                    .expect("previous token in execute_parsfn should not be None")
+                    .get_type(),
+            )
+            .infix;
             execute_parsfn(parser, infix_rule, scanner, chunk);
         } else {
             break;

@@ -52,210 +52,213 @@ pub struct ParseRule {
 }
 
 impl ParseRule {
-    pub fn get_rule(token_type: TokenType) -> Option<Self> {
+    pub fn get_rule(token_type: TokenType) -> Self {
         match token_type {
-            TokenType::LeftParen => Some(ParseRule {
+            TokenType::LeftParen => ParseRule {
                 prefix: ParseFn::Grouping,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::RightParen => Some(ParseRule {
+            },
+            TokenType::RightParen => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::LeftBrace => Some(ParseRule {
+            },
+            TokenType::LeftBrace => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::RightBrace => Some(ParseRule {
+            },
+            TokenType::RightBrace => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Comma => Some(ParseRule {
+            },
+            TokenType::Comma => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Dot => Some(ParseRule {
+            },
+            TokenType::Dot => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Minus => Some(ParseRule {
+            },
+            TokenType::Minus => ParseRule {
                 prefix: ParseFn::Unary,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecTerm,
-            }),
-            TokenType::Plus => Some(ParseRule {
+            },
+            TokenType::Plus => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecTerm,
-            }),
-            TokenType::Semicolon => Some(ParseRule {
+            },
+            TokenType::Semicolon => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Slash => Some(ParseRule {
+            },
+            TokenType::Slash => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecFactor,
-            }),
-            TokenType::Star => Some(ParseRule {
+            },
+            TokenType::Star => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecFactor,
-            }),
-            TokenType::Bang => Some(ParseRule {
+            },
+            TokenType::Bang => ParseRule {
                 prefix: ParseFn::Unary,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::BangEqual => Some(ParseRule {
+            },
+            TokenType::BangEqual => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecEquality,
-            }),
-            TokenType::Equal => Some(ParseRule {
+            },
+            TokenType::Equal => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::EqualEqual => Some(ParseRule {
+            },
+            TokenType::EqualEqual => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecEquality,
-            }),
-            TokenType::Greater => Some(ParseRule {
+            },
+            TokenType::Greater => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecComparison,
-            }),
-            TokenType::GreaterEqual => Some(ParseRule {
+            },
+            TokenType::GreaterEqual => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecComparison,
-            }),
-            TokenType::Less => Some(ParseRule {
+            },
+            TokenType::Less => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecComparison,
-            }),
-            TokenType::LessEqual => Some(ParseRule {
+            },
+            TokenType::LessEqual => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Binary,
                 precedence: Precedence::PrecComparison,
-            }),
-            TokenType::Identifier => Some(ParseRule {
+            },
+            TokenType::Identifier => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::String => Some(ParseRule {
+            },
+            TokenType::String => ParseRule {
                 prefix: ParseFn::String,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Number => Some(ParseRule {
+            },
+            TokenType::Number => ParseRule {
                 prefix: ParseFn::Number,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
+            },
 
-            TokenType::And => Some(ParseRule {
+            TokenType::And => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Class => Some(ParseRule {
+            },
+            TokenType::Class => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Else => Some(ParseRule {
+            },
+            TokenType::Else => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::False => Some(ParseRule {
+            },
+            TokenType::False => ParseRule {
                 prefix: ParseFn::Literal,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::For => Some(ParseRule {
+            },
+            TokenType::For => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Fun => Some(ParseRule {
+            },
+            TokenType::Fun => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::If => Some(ParseRule {
+            },
+            TokenType::If => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Nil => Some(ParseRule {
+            },
+            TokenType::Nil => ParseRule {
                 prefix: ParseFn::Literal,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Or => Some(ParseRule {
+            },
+            TokenType::Or => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Print => Some(ParseRule {
+            },
+            TokenType::Print => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Return => Some(ParseRule {
+            },
+            TokenType::Return => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Super => Some(ParseRule {
+            },
+            TokenType::Super => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::This => Some(ParseRule {
+            },
+            TokenType::This => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::True => Some(ParseRule {
+            },
+            TokenType::True => ParseRule {
                 prefix: ParseFn::Literal,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::Var => Some(ParseRule {
+            },
+            TokenType::Var => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::While => Some(ParseRule {
+            },
+            TokenType::While => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::ParseError => Some(ParseRule {
+            },
+            TokenType::ParseError => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            TokenType::EOF => Some(ParseRule {
+            },
+            TokenType::EOF => ParseRule {
                 prefix: ParseFn::Null,
                 infix: ParseFn::Null,
                 precedence: Precedence::PrecNone,
-            }),
-            _ => None,
+            },
+            _ => panic!(
+                "Unexpected token type occurred in parse rule, {}",
+                token_type.as_string()
+            ),
         }
     }
 }

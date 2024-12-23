@@ -24,6 +24,7 @@ pub enum OpCode {
     OpLess,
     OpLessEqual,
     OpGreaterEqual,
+    OpPrint,
     // TODO: implement bang equal
 }
 
@@ -46,6 +47,7 @@ impl OpCode {
             14 => OpCode::OpLess,
             15 => OpCode::OpLessEqual,
             16 => OpCode::OpGreaterEqual,
+            17 => OpCode::OpPrint,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -70,6 +72,7 @@ impl Display for OpCode {
             OpCode::OpLess => "OP_LESS",
             OpCode::OpGreaterEqual => "OP_GREATER_EQUAL",
             OpCode::OpLessEqual => "OP_LESS_EQUAL",
+            OpCode::OpPrint => "OP_PRINT",
         };
         write!(f, "{}", s)
     }
@@ -287,6 +290,9 @@ pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
                     Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
                 }
             }
+            OpCode::OpPrint => {
+                println!("{}", vm.vm_stack.pop())
+            }
         };
     }
 }
@@ -346,6 +352,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         OpCode::OpLess => simple_instruction(instruction, offset),
         OpCode::OpGreaterEqual => simple_instruction(instruction, offset),
         OpCode::OpLessEqual => simple_instruction(instruction, offset),
+        OpCode::OpPrint => simple_instruction(instruction, offset),
     }
 }
 
