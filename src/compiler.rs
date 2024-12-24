@@ -143,7 +143,7 @@ fn named_variable(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk,
         .get_line();
     if can_assign && match_token(parser, scanner, TokenType::Equal) {
         expression(parser, scanner, chunk);
-        emit_byte(chunk, OpCode::OpSetGlobal as usize, line);
+        emit_bytes(chunk, OpCode::OpSetGlobal as usize, arg, line);
     } else {
         emit_bytes(chunk, OpCode::OpGetGlobal as usize, arg, line);
     }
@@ -293,6 +293,7 @@ fn parse_precedence(
                     .get_type(),
             )
             .infix;
+            //  infixRule() in the book
             execute_parsfn(parser, infix_rule, scanner, chunk, can_assign);
         } else {
             break;

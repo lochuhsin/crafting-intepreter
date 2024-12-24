@@ -416,6 +416,10 @@ pub fn simple_instruction(op: OpCode, offset: usize) -> usize {
 }
 
 pub fn constant_instruction(op: OpCode, offset: usize, chunk: &Chunk) -> usize {
+    println!(
+        "{:?}, offset: {}, const_pool: {:?}",
+        &chunk.bytecode, offset, chunk.const_pool.values
+    );
     let constant = chunk.bytecode[offset + 1];
     let val = chunk.const_pool.values[constant].clone();
 
