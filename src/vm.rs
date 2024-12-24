@@ -113,240 +113,245 @@ pub enum InterpretResult {
 }
 
 #[derive(Default)]
+
 pub struct VirtualMachine {
-    pub chunk: Chunk,
     pub ip: usize, // instruction pointer, the index currently pointing to the instruction in chunk
     pub vm_stack: VirtualMachineStack,
     pub table: Table,
 }
 
 impl VirtualMachine {
-    pub fn new(chunk: Chunk) -> VirtualMachine {
+    pub fn new() -> Self {
         VirtualMachine {
             ip: 0,
-            chunk,
             vm_stack: VirtualMachineStack::default(),
             table: Table::default(),
         }
     }
-    pub fn update_chunk(&mut self, chunk: Chunk) {
-        self.chunk = chunk;
-    }
-}
-
-pub fn run(vm: &mut VirtualMachine) -> InterpretResult {
-    loop {
-        #[cfg(debug_assertions)]
-        {
-            for i in 0..vm.vm_stack.ptr {
-                print!("[ {} ]", vm.vm_stack.values[i])
-            }
-            println!();
-            disassemble_instruction(&vm.chunk, vm.ip);
-        }
-        let op_code = read_op(vm);
-        match op_code {
-            OpCode::OpReturn => {
-                return InterpretResult::InterpretOk;
-            }
-            OpCode::OpConstant => {
-                let val = read_constant(vm);
-                vm.vm_stack.push(val);
-            }
-            OpCode::OpNegate => {
-                vm.vm_stack.negate_peek();
-            }
-            OpCode::OpAdd => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop(); // Handle empty value stack
-
-                let v = v1 + v2;
-
-                match v {
-                    // TODO: put the actual line, not 0
-                    Ok(v) => {
-                        vm.vm_stack.push(v);
-                    }
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
+    pub fn run(&mut self, chunk: &mut Chunk) -> InterpretResult {
+        loop {
+            #[cfg(debug_assertions)]
+            {
+                for i in 0..self.vm_stack.ptr {
+                    print!("[ {} ]", self.vm_stack.values[i])
                 }
+                println!();
+                disassemble_instruction(chunk, self.ip);
             }
-            OpCode::OpSubtract => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop(); // Handle empty value stack
-                let v = v1 - v2;
-                match v {
-                    Ok(v) => vm.vm_stack.push(v),
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
+            let op_code = self.read_op(chunk);
+            match op_code {
+                OpCode::OpReturn => {
+                    return InterpretResult::InterpretOk;
                 }
-            }
-            OpCode::OpMultiply => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop(); // Handle empty value stack
-                let v = v1 * v2;
-                match v {
-                    // TODO: put the actual line, not 0
-                    Ok(v) => vm.vm_stack.push(v),
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
+                OpCode::OpConstant => {
+                    let val = self.read_constant(chunk);
+                    self.vm_stack.push(val);
                 }
-            }
-            OpCode::OpDivide => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop(); // Handle empty value stack
-                let v = v1 / v2;
-                match v {
-                    // TODO: put the actual line, not 0
-                    Ok(v) => vm.vm_stack.push(v),
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
+                OpCode::OpNegate => {
+                    self.vm_stack.negate_peek();
                 }
-            }
-            OpCode::OpNil => vm.vm_stack.push(GenericValue::from_none()),
-            OpCode::OpFalse => vm.vm_stack.push(GenericValue::from_bool(true)),
-            OpCode::OpTrue => vm.vm_stack.push(GenericValue::from_bool(false)),
-            OpCode::OpNot => {
-                let val = vm.vm_stack.pop();
+                OpCode::OpAdd => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop(); // Handle empty value stack
 
-                // TODO: move this to value, operator overloading (trait ~~~)
-                fn is_false(v: &GenericValue) -> Result<bool, RuntimeError> {
+                    let v = v1 + v2;
+
                     match v {
-                        GenericValueType::Nil => Ok(true),
-                        GenericValueType::Bool(b) => Ok(!b),
-                        _ => Err(RuntimeError::InvalidOperation("unary only support boolean and None, should the error be implemented in this phase ?".to_string())),
-                    }
-                }
-                match is_false(&val) {
-                    Ok(v) => vm.vm_stack.push(GenericValue::from_bool(v)),
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
-                }
-            }
-            OpCode::OpEqual => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop();
-                vm.vm_stack.push(GenericValue::from_bool(v1 == v2))
-            }
-            OpCode::OpGreater => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop();
-
-                // TODO: move this to value, operator overloading (trait ~~~)
-                fn is_greater(v1: GenericValue, v2: GenericValue) -> Result<bool, RuntimeError> {
-                    match (v1, v2) {
-                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => Ok(n1 > n2),
-                        _ => Err(RuntimeError::InvalidOperation(
-                            " > not supported ".to_string(),
-                        )),
-                    }
-                }
-                match is_greater(v1, v2) {
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
-                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
-                }
-            }
-            OpCode::OpLess => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop();
-
-                // TODO: move this to value, operator overloading (trait ~~~)
-                fn is_less(v1: GenericValue, v2: GenericValue) -> Result<bool, RuntimeError> {
-                    match (v1, v2) {
-                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => Ok(n1 < n2),
-                        _ => Err(RuntimeError::InvalidOperation(
-                            " < not supported ".to_string(),
-                        )),
-                    }
-                }
-                match is_less(v1, v2) {
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
-                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
-                }
-            }
-            OpCode::OpGreaterEqual => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop();
-
-                // TODO: move this to value, operator overloading (trait ~~~)
-                fn is_greater_equal(
-                    v1: GenericValue,
-                    v2: GenericValue,
-                ) -> Result<bool, RuntimeError> {
-                    match (v1, v2) {
-                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
-                            Ok(n1 >= n2)
+                        // TODO: put the actual line, not 0
+                        Ok(v) => {
+                            self.vm_stack.push(v);
                         }
-                        _ => Err(RuntimeError::InvalidOperation(
-                            " >= not supported ".to_string(),
-                        )),
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
                     }
                 }
-                match is_greater_equal(v1, v2) {
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
-                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
+                OpCode::OpSubtract => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop(); // Handle empty value stack
+                    let v = v1 - v2;
+                    match v {
+                        Ok(v) => self.vm_stack.push(v),
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
+                    }
                 }
-            }
-            OpCode::OpLessEqual => {
-                let v1 = vm.vm_stack.pop();
-                let v2 = vm.vm_stack.pop();
+                OpCode::OpMultiply => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop(); // Handle empty value stack
+                    let v = v1 * v2;
+                    match v {
+                        // TODO: put the actual line, not 0
+                        Ok(v) => self.vm_stack.push(v),
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
+                    }
+                }
+                OpCode::OpDivide => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop(); // Handle empty value stack
+                    let v = v1 / v2;
+                    match v {
+                        // TODO: put the actual line, not 0
+                        Ok(v) => self.vm_stack.push(v),
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
+                    }
+                }
+                OpCode::OpNil => self.vm_stack.push(GenericValue::from_none()),
+                OpCode::OpFalse => self.vm_stack.push(GenericValue::from_bool(true)),
+                OpCode::OpTrue => self.vm_stack.push(GenericValue::from_bool(false)),
+                OpCode::OpNot => {
+                    let val = self.vm_stack.pop();
 
-                // TODO: move this to value, operator overloading (trait ~~~)
-                fn is_less_equal(v1: GenericValue, v2: GenericValue) -> Result<bool, RuntimeError> {
-                    match (v1, v2) {
-                        (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
-                            Ok(n1 <= n2)
+                    // TODO: move this to value, operator overloading (trait ~~~)
+                    fn is_false(v: &GenericValue) -> Result<bool, RuntimeError> {
+                        match v {
+                            GenericValueType::Nil => Ok(true),
+                            GenericValueType::Bool(b) => Ok(!b),
+                            _ => Err(RuntimeError::InvalidOperation("unary only support boolean and None, should the error be implemented in this phase ?".to_string())),
                         }
-                        _ => Err(RuntimeError::InvalidOperation(
-                            " <= not supported ".to_string(),
-                        )),
+                    }
+                    match is_false(&val) {
+                        Ok(v) => self.vm_stack.push(GenericValue::from_bool(v)),
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
                     }
                 }
-                match is_less_equal(v1, v2) {
-                    Err(e) => runtime_error(0, e.to_string().as_str()),
-                    Ok(v) => vm.vm_stack.push(GenericValueType::from_bool(v)),
+                OpCode::OpEqual => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop();
+                    self.vm_stack.push(GenericValue::from_bool(v1 == v2))
                 }
-            }
-            OpCode::OpPrint => {
-                println!("{}", vm.vm_stack.pop()) // 我手改成 peek , 書裡面寫 pop, 我在思考....
-            }
-            OpCode::OpPop => {
-                vm.vm_stack.pop();
-            }
-            OpCode::OpDefineGlobal => {
-                let name = read_string(vm);
-                vm.table.set(name.clone(), vm.vm_stack.peek(0));
-                vm.vm_stack.pop();
-            }
-            OpCode::OpGetGlobal => {
-                let name = read_string(vm);
-                if let Some(v) = vm.table.get(&name) {
-                    vm.vm_stack.push(v.clone());
-                } else {
-                    runtime_error(0, &format!("undefined global variable:{}", name));
-                    return InterpretResult::InterpretRunTimeError;
+                OpCode::OpGreater => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop();
+
+                    // TODO: move this to value, operator overloading (trait ~~~)
+                    fn is_greater(
+                        v1: GenericValue,
+                        v2: GenericValue,
+                    ) -> Result<bool, RuntimeError> {
+                        match (v1, v2) {
+                            (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
+                                Ok(n1 > n2)
+                            }
+                            _ => Err(RuntimeError::InvalidOperation(
+                                " > not supported ".to_string(),
+                            )),
+                        }
+                    }
+                    match is_greater(v1, v2) {
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
+                        Ok(v) => self.vm_stack.push(GenericValueType::from_bool(v)),
+                    }
                 }
-            }
-        };
+                OpCode::OpLess => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop();
+
+                    // TODO: move this to value, operator overloading (trait ~~~)
+                    fn is_less(v1: GenericValue, v2: GenericValue) -> Result<bool, RuntimeError> {
+                        match (v1, v2) {
+                            (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
+                                Ok(n1 < n2)
+                            }
+                            _ => Err(RuntimeError::InvalidOperation(
+                                " < not supported ".to_string(),
+                            )),
+                        }
+                    }
+                    match is_less(v1, v2) {
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
+                        Ok(v) => self.vm_stack.push(GenericValueType::from_bool(v)),
+                    }
+                }
+                OpCode::OpGreaterEqual => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop();
+
+                    // TODO: move this to value, operator overloading (trait ~~~)
+                    fn is_greater_equal(
+                        v1: GenericValue,
+                        v2: GenericValue,
+                    ) -> Result<bool, RuntimeError> {
+                        match (v1, v2) {
+                            (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
+                                Ok(n1 >= n2)
+                            }
+                            _ => Err(RuntimeError::InvalidOperation(
+                                " >= not supported ".to_string(),
+                            )),
+                        }
+                    }
+                    match is_greater_equal(v1, v2) {
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
+                        Ok(v) => self.vm_stack.push(GenericValueType::from_bool(v)),
+                    }
+                }
+                OpCode::OpLessEqual => {
+                    let v1 = self.vm_stack.pop();
+                    let v2 = self.vm_stack.pop();
+
+                    // TODO: move this to value, operator overloading (trait ~~~)
+                    fn is_less_equal(
+                        v1: GenericValue,
+                        v2: GenericValue,
+                    ) -> Result<bool, RuntimeError> {
+                        match (v1, v2) {
+                            (GenericValueType::Number(n1), GenericValueType::Number(n2)) => {
+                                Ok(n1 <= n2)
+                            }
+                            _ => Err(RuntimeError::InvalidOperation(
+                                " <= not supported ".to_string(),
+                            )),
+                        }
+                    }
+                    match is_less_equal(v1, v2) {
+                        Err(e) => runtime_error(0, e.to_string().as_str()),
+                        Ok(v) => self.vm_stack.push(GenericValueType::from_bool(v)),
+                    }
+                }
+                OpCode::OpPrint => {
+                    println!("{}", self.vm_stack.pop()) // 我手改成 peek , 書裡面寫 pop, 我在思考....
+                }
+                OpCode::OpPop => {
+                    self.vm_stack.pop();
+                }
+                OpCode::OpDefineGlobal => {
+                    let name = self.read_string(chunk);
+                    self.table.set(name.clone(), self.vm_stack.peek(0));
+                    self.vm_stack.pop();
+                }
+                OpCode::OpGetGlobal => {
+                    let name = self.read_string(chunk);
+                    if let Some(v) = self.table.get(&name) {
+                        self.vm_stack.push(v.clone());
+                    } else {
+                        runtime_error(0, &format!("undefined global variable:{}", name));
+                        return InterpretResult::InterpretRunTimeError;
+                    }
+                }
+            };
+        }
     }
-}
 
-fn read_string(vm: &mut VirtualMachine) -> String {
-    read_constant(vm)
-        .as_string()
-        .expect("read_string operation should always be valid")
-}
+    fn read_string(&mut self, chunk: &mut Chunk) -> String {
+        self.read_constant(chunk)
+            .as_string()
+            .expect("read_string operation should always be valid")
+    }
 
-fn read_op_raw(vm: &mut VirtualMachine) -> usize {
-    let code = vm.chunk.bytecode[vm.ip];
-    vm.ip += 1;
-    code
-}
+    fn read_op_raw(&mut self, chunk: &mut Chunk) -> usize {
+        let code = chunk.bytecode[self.ip];
+        self.ip += 1;
+        code
+    }
 
-fn read_op(vm: &mut VirtualMachine) -> OpCode {
-    let code = vm.chunk.bytecode[vm.ip];
-    vm.ip += 1;
-    OpCode::from_usize(code)
-}
+    fn read_op(&mut self, chunk: &mut Chunk) -> OpCode {
+        let code = chunk.bytecode[self.ip];
+        self.ip += 1;
+        OpCode::from_usize(code)
+    }
 
-fn read_constant(vm: &mut VirtualMachine) -> GenericValue {
-    let code = read_op_raw(vm);
-    vm.chunk.const_pool.values[code].clone()
+    fn read_constant(&mut self, chunk: &mut Chunk) -> GenericValue {
+        let code = self.read_op_raw(chunk);
+        chunk.const_pool.values[code].clone()
+    }
 }
 
 ////////////////////////////////////////////////////////////////
