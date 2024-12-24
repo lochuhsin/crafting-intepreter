@@ -159,7 +159,7 @@ impl Scanner {
 
            we match the string using DFA,
         */
-        if let Some(t) = TokenType::keyword_to_token_dfa(&self.source[self.start..self.current]) {
+        if let Some(t) = TokenType::keyword_to_token(&self.source[self.start..self.current]) {
             t
         } else {
             TokenType::Identifier

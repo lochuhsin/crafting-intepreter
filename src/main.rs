@@ -1,6 +1,6 @@
 use clap::Parser;
 use core::panic;
-use lolang::chunk::{self, Chunk};
+use lolang::chunk::Chunk;
 use lolang::compiler::compile;
 use lolang::vm::{InterpretResult, VirtualMachine};
 use std::fs::File;

@@ -130,23 +130,26 @@ fn print_statement(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk
     );
 }
 
-fn variable(previous_token: Option<Token>, chunk: &mut Chunk) {
-    named_variable(previous_token.as_ref(), chunk);
+fn variable(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk, can_assign: bool) {
+    named_variable(parser, scanner, chunk, can_assign);
 }
 
-fn named_variable(previous_token: Option<&Token>, chunk: &mut Chunk) {
-    let arg = identifier_constant(previous_token, chunk);
-    emit_bytes(
-        chunk,
-        OpCode::OpGetGlobal as usize,
-        arg,
-        previous_token
-            .expect("name variable token should not be empty")
-            .get_line(),
-    );
+fn named_variable(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk, can_assign: bool) {
+    let arg = identifier_constant(parser.previous.as_ref(), chunk);
+    let line = parser
+        .previous
+        .as_ref()
+        .expect("name variable token should not be empty")
+        .get_line();
+    if can_assign && match_token(parser, scanner, TokenType::Equal) {
+        expression(parser, scanner, chunk);
+        emit_byte(chunk, OpCode::OpSetGlobal as usize, line);
+    } else {
+        emit_bytes(chunk, OpCode::OpGetGlobal as usize, arg, line);
+    }
 }
 
-fn string(previous_token: Option<Token>, chunk: &mut Chunk) {
+fn string(previous_token: Option<Token>, chunk: &mut Chunk, can_assign: bool) {
     let token = previous_token.as_ref().unwrap();
     emit_constant(
         token.get_line(),
@@ -155,7 +158,7 @@ fn string(previous_token: Option<Token>, chunk: &mut Chunk) {
     );
 }
 
-fn number(previous_token: Option<Token>, chunk: &mut Chunk) {
+fn number(previous_token: Option<Token>, chunk: &mut Chunk, can_assign: bool) {
     let token: &Token = previous_token.as_ref().unwrap();
     let num = token
         .get_lexeme()
@@ -169,6 +172,7 @@ fn binary(
     scanner: &mut Scanner,
     previous_token: Option<Token>,
     chunk: &mut Chunk,
+    can_assign: bool,
 ) {
     let token = previous_token
         .as_ref()
@@ -209,6 +213,7 @@ fn unary(
     scanner: &mut Scanner,
     previous_token: Option<Token>,
     chunk: &mut Chunk,
+    can_assign: bool,
 ) {
     let token = previous_token.as_ref().unwrap();
     let op = token.get_type();
@@ -228,7 +233,7 @@ fn unary(
     }
 }
 
-fn literal(previous_token: Option<Token>, chunk: &mut Chunk) {
+fn literal(previous_token: Option<Token>, chunk: &mut Chunk, can_assign: bool) {
     let token = previous_token.as_ref().unwrap();
     match *token.get_type() {
         TokenType::False => emit_byte(chunk, OpCode::OpFalse as usize, token.get_line()),
@@ -238,7 +243,7 @@ fn literal(previous_token: Option<Token>, chunk: &mut Chunk) {
     }
 }
 
-fn grouping(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk) {
+fn grouping(parser: &mut Parser, scanner: &mut Scanner, chunk: &mut Chunk, can_assign: bool) {
     expression(parser, scanner, chunk);
     parser.consume(
         TokenType::RightParen,
@@ -267,11 +272,12 @@ fn parse_precedence(
     let rule = ParseRule::get_rule(*previous_type);
 
     if rule.prefix == ParseFn::Null {
-        error(token.get_line(), "Expect expression")
-    } else {
-        // this is prefixRule() in the book, since I'm not sure how to store function pointers at this moment
-        execute_parsfn(parser, rule.prefix, scanner, chunk);
+        error(token.get_line(), "Expect expression");
+        return;
     }
+    // this is prefixRule() in the book, since I'm not sure how to store function pointers at this moment
+    let can_assign = precedence as usize <= Precedence::PrecAssignment as usize;
+    execute_parsfn(parser, rule.prefix, scanner, chunk, can_assign);
 
     loop {
         let curr_token = parser.current.as_mut().unwrap();
@@ -287,23 +293,29 @@ fn parse_precedence(
                     .get_type(),
             )
             .infix;
-            execute_parsfn(parser, infix_rule, scanner, chunk);
+            execute_parsfn(parser, infix_rule, scanner, chunk, can_assign);
         } else {
             break;
         }
     }
 }
 
-fn execute_parsfn(parser: &mut Parser, parsfn: ParseFn, scanner: &mut Scanner, chunk: &mut Chunk) {
+fn execute_parsfn(
+    parser: &mut Parser,
+    parsfn: ParseFn,
+    scanner: &mut Scanner,
+    chunk: &mut Chunk,
+    can_assign: bool,
+) {
     let token: Option<Token> = parser.previous.clone(); // don't like this
     match parsfn {
-        ParseFn::Literal => literal(token, chunk),
-        ParseFn::Number => number(token, chunk),
-        ParseFn::Unary => unary(parser, scanner, token, chunk),
-        ParseFn::Binary => binary(parser, scanner, token, chunk),
-        ParseFn::Grouping => grouping(parser, scanner, chunk),
-        ParseFn::String => string(token, chunk),
-        ParseFn::Variable => variable(token, chunk),
+        ParseFn::Literal => literal(token, chunk, can_assign),
+        ParseFn::Number => number(token, chunk, can_assign),
+        ParseFn::Unary => unary(parser, scanner, token, chunk, can_assign),
+        ParseFn::Binary => binary(parser, scanner, token, chunk, can_assign),
+        ParseFn::Grouping => grouping(parser, scanner, chunk, can_assign),
+        ParseFn::String => string(token, chunk, can_assign),
+        ParseFn::Variable => variable(parser, scanner, chunk, can_assign),
         ParseFn::Null => (),
     }
 }

@@ -29,6 +29,7 @@ pub enum OpCode {
     OpPop,
     OpDefineGlobal,
     OpGetGlobal,
+    OpSetGlobal,
     // TODO: implement bang equal, mod %
 }
 
@@ -55,6 +56,7 @@ impl OpCode {
             18 => OpCode::OpPop,
             19 => OpCode::OpDefineGlobal,
             20 => OpCode::OpGetGlobal,
+            21 => OpCode::OpSetGlobal,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -83,6 +85,7 @@ impl Display for OpCode {
             Self::OpPop => "OpPop",
             Self::OpDefineGlobal => "OpDefineGlobal",
             Self::OpGetGlobal => "OpGetGlobal",
+            Self::OpSetGlobal => "OpSetGlobal",
         };
         write!(f, "{}", s)
     }
@@ -326,6 +329,13 @@ impl VirtualMachine {
                         return InterpretResult::InterpretRunTimeError;
                     }
                 }
+                OpCode::OpSetGlobal => {
+                    let name = self.read_string(chunk);
+                    if self.table.set(name.clone(), self.vm_stack.peek(0)) {
+                        self.table.delete(&name);
+                        runtime_error(0, format!("Undefined global variable :{}", name).as_str());
+                    }
+                }
             };
         }
     }
@@ -396,6 +406,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         OpCode::OpPop => simple_instruction(instruction, offset),
         OpCode::OpDefineGlobal => constant_instruction(OpCode::OpDefineGlobal, offset, chunk),
         OpCode::OpGetGlobal => constant_instruction(OpCode::OpGetGlobal, offset, chunk),
+        OpCode::OpSetGlobal => constant_instruction(OpCode::OpSetGlobal, offset, chunk),
     }
 }
 
