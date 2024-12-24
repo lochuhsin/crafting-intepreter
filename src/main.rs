@@ -1,6 +1,6 @@
 use clap::Parser;
 use core::panic;
-use lolang::chunk::Chunk;
+use lolang::chunk::{self, Chunk};
 use lolang::compiler::compile;
 use lolang::vm::{InterpretResult, VirtualMachine};
 use std::fs::File;
@@ -26,17 +26,18 @@ fn trim_end(s: &mut String) {
     }
 }
 
-pub fn interpret(s: String, vm: &mut VirtualMachine) -> InterpretResult {
+pub fn interpret(s: String, vm: &mut VirtualMachine, chunk: &mut Chunk) -> InterpretResult {
     // NOTE: Refactor the virtual machine, should stay until the prompt exists,
-    let mut chunk = Chunk::default();
-    if !compile(s, &mut chunk) {
+    if !compile(s, chunk) {
         return InterpretResult::InterpretCompileError;
     };
-    vm.run(&mut chunk)
+    vm.run(chunk)
 }
 
 fn run_prompt() {
     let mut vm = VirtualMachine::default();
+    let mut chunk = Chunk::default();
+
     loop {
         print!(">> ");
         let _ = stdout().flush();
@@ -50,7 +51,7 @@ fn run_prompt() {
         if s == *"exit" {
             break;
         }
-        match interpret(s.clone(), &mut vm) {
+        match interpret(s.clone(), &mut vm, &mut chunk) {
             InterpretResult::InterpretOk => (),
             InterpretResult::InterpretCompileError => {
                 println!("compile error, code: {}", 65);
@@ -66,13 +67,14 @@ fn run_prompt() {
 
 fn run_file(path: &PathBuf) {
     let mut vm = VirtualMachine::default();
+    let mut chunk = Chunk::default();
     let mut contents = String::new();
     if let Ok(mut file) = File::open(path) {
         let _ = file.read_to_string(&mut contents);
     } else {
         panic!("Couldn't open file or file doesn't not exist")
     }
-    match interpret(contents, &mut vm) {
+    match interpret(contents, &mut vm, &mut chunk) {
         InterpretResult::InterpretOk => (),
         InterpretResult::InterpretCompileError => exit(65),
         InterpretResult::InterpretRunTimeError => exit(70),

@@ -322,7 +322,7 @@ impl VirtualMachine {
                     if let Some(v) = self.table.get(&name) {
                         self.vm_stack.push(v.clone());
                     } else {
-                        runtime_error(0, &format!("undefined global variable:{}", name));
+                        runtime_error(0, &format!("undefined global variable :{}", name));
                         return InterpretResult::InterpretRunTimeError;
                     }
                 }
